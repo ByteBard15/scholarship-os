@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS volunteer_experiences;
+DROP TABLE IF EXISTS awards;
+DROP TABLE IF EXISTS certifications;
+DROP TABLE IF EXISTS career_goals;
+DROP TABLE IF EXISTS research_interests;
+DROP TABLE IF EXISTS skills;
+DROP TABLE IF EXISTS articles;
+DROP TABLE IF EXISTS publications;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS employment_history;
+DROP TABLE IF EXISTS education_history;
