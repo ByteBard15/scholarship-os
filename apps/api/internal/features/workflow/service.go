@@ -56,10 +56,112 @@ func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearch
 	for i, link := range request.Links {
 		links[i] = ResearchTaskLink{Label: link.Label, URL: link.URL, LinkType: link.LinkType}
 	}
-	if err := s.repo.CreateResearchTask(ctx, task, links); err != nil {
+	if err := s.validateResearchContextOwnership(ctx, request.UserID, request.ResearchContextIDs); err != nil {
+		return nil, err
+	}
+	newContexts := make([]ResearchContext, len(request.NewResearchContexts))
+	for i, item := range request.NewResearchContexts {
+		question, answer := strings.TrimSpace(item.Question), strings.TrimSpace(item.Answer)
+		if question == "" || answer == "" {
+			return nil, validationError("newResearchContexts requires non-empty question and answer values")
+		}
+		newContexts[i] = ResearchContext{UserID: request.UserID, Question: question, Answer: answer}
+	}
+	if err := s.repo.CreateResearchTask(ctx, task, links, newContexts, request.ResearchContextIDs); err != nil {
 		return nil, err
 	}
 	return task, nil
+}
+
+func (s *Service) validateResearchContextOwnership(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
+	for _, id := range ids {
+		item, err := s.repo.GetResearchContext(ctx, id)
+		if err != nil || item.UserID != userID {
+			return ErrResearchContextNotFound
+		}
+	}
+	return nil
+}
+
+func (s *Service) ListResearchContexts(ctx context.Context, userID *uuid.UUID) ([]ResearchContext, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && !actor.IsSystem() {
+		if actor.UserID == nil {
+			return nil, principal.ErrForbidden
+		}
+		userID = actor.UserID
+	}
+	return s.repo.ListResearchContexts(ctx, userID)
+}
+
+func (s *Service) CreateResearchContext(ctx context.Context, request CreateResearchContextRequest) (*ResearchContext, error) {
+	if request.UserID == uuid.Nil || principal.EnforceOwner(ctx, request.UserID) != nil {
+		return nil, ErrResearchContextNotFound
+	}
+	question, answer := strings.TrimSpace(request.Question), strings.TrimSpace(request.Answer)
+	if question == "" || answer == "" {
+		return nil, validationError("question and answer are required")
+	}
+	item := &ResearchContext{UserID: request.UserID, Question: question, Answer: answer}
+	return item, s.repo.CreateResearchContext(ctx, item)
+}
+
+func (s *Service) UpdateResearchContext(ctx context.Context, id uuid.UUID, request NewResearchContextRequest) (*ResearchContext, error) {
+	item, err := s.repo.GetResearchContext(ctx, id)
+	if err != nil || principal.EnforceOwner(ctx, item.UserID) != nil {
+		return nil, ErrResearchContextNotFound
+	}
+	question, answer := strings.TrimSpace(request.Question), strings.TrimSpace(request.Answer)
+	if question == "" || answer == "" {
+		return nil, validationError("question and answer are required")
+	}
+	item.Question, item.Answer = question, answer
+	return item, s.repo.UpdateResearchContext(ctx, item)
+}
+
+func (s *Service) DeleteResearchContext(ctx context.Context, id uuid.UUID) error {
+	item, err := s.repo.GetResearchContext(ctx, id)
+	if err != nil || principal.EnforceOwner(ctx, item.UserID) != nil {
+		return ErrResearchContextNotFound
+	}
+	return s.repo.DeleteResearchContext(ctx, item)
+}
+
+func (s *Service) ListTaskContexts(ctx context.Context, taskID uuid.UUID) ([]ResearchContext, error) {
+	if _, err := s.GetResearchTask(ctx, taskID); err != nil {
+		return nil, err
+	}
+	return s.repo.ListTaskContexts(ctx, taskID)
+}
+
+func (s *Service) AttachTaskContexts(ctx context.Context, taskID uuid.UUID, ids []uuid.UUID) ([]ResearchContext, error) {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if task.Status == "running" || task.Status == "review_required" || task.Status == "completed" || task.Status == "cancelled" {
+		return nil, ErrInvalidResearchTaskState
+	}
+	if err = s.validateResearchContextOwnership(ctx, task.UserID, ids); err != nil {
+		return nil, err
+	}
+	if err = s.repo.AttachTaskContexts(ctx, taskID, ids); err != nil {
+		return nil, err
+	}
+	return s.repo.ListTaskContexts(ctx, taskID)
+}
+
+func (s *Service) DetachTaskContext(ctx context.Context, taskID, contextID uuid.UUID) error {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.Status == "running" || task.Status == "review_required" || task.Status == "completed" || task.Status == "cancelled" {
+		return ErrInvalidResearchTaskState
+	}
+	if err = s.validateResearchContextOwnership(ctx, task.UserID, []uuid.UUID{contextID}); err != nil {
+		return err
+	}
+	return s.repo.DetachTaskContext(ctx, taskID, contextID)
 }
 
 func (s *Service) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) ([]ResearchTask, error) {

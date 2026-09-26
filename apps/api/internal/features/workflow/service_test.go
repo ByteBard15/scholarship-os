@@ -28,7 +28,7 @@ type fakeRepository struct {
 func newFakeRepository() *fakeRepository {
 	return &fakeRepository{tasks: map[uuid.UUID]*ResearchTask{}, links: map[uuid.UUID][]ResearchTaskLink{}}
 }
-func (f *fakeRepository) CreateResearchTask(_ context.Context, task *ResearchTask, links []ResearchTaskLink) error {
+func (f *fakeRepository) CreateResearchTask(_ context.Context, task *ResearchTask, links []ResearchTaskLink, _ []ResearchContext, _ []uuid.UUID) error {
 	if task.ID == uuid.Nil {
 		task.ID = uuid.New()
 	}

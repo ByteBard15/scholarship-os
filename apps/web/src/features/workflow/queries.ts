@@ -7,6 +7,8 @@ import {
   listProposals,
   listQuestionnaires,
   listResearchTasks,
+  listResearchContexts,
+  listTaskContexts,
   listTaskFindings,
   listTaskLinks,
   listTaskOutputs,
@@ -24,6 +26,18 @@ export const useResearchTask = (id: string) =>
   useQuery({
     queryKey: workflowKeys.task(id),
     queryFn: () => getResearchTask(id),
+    enabled: Boolean(id),
+  });
+export const useResearchContexts = (userId?: string) =>
+  useQuery({
+    queryKey: [...workflowKeys.all, "research-contexts", userId],
+    queryFn: () => listResearchContexts(userId),
+    enabled: Boolean(userId),
+  });
+export const useTaskContexts = (id: string) =>
+  useQuery({
+    queryKey: [...workflowKeys.task(id), "contexts"],
+    queryFn: () => listTaskContexts(id),
     enabled: Boolean(id),
   });
 export const useTaskLinks = (id: string) =>

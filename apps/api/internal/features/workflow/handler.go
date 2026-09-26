@@ -60,6 +60,127 @@ func (h *Handler) CreateResearchTask(w http.ResponseWriter, r *http.Request) {
 	response.Data(w, 201, researchTaskResponse(task))
 }
 
+func researchContextResponse(item *ResearchContext) ResearchContextResponse {
+	return ResearchContextResponse{ID: item.ID, UserID: item.UserID, Question: item.Question, Answer: item.Answer, CreatedAt: item.CreatedAt.UTC(), UpdatedAt: item.UpdatedAt.UTC()}
+}
+
+func researchContextResponses(items []ResearchContext) []ResearchContextResponse {
+	result := make([]ResearchContextResponse, len(items))
+	for i := range items {
+		result[i] = researchContextResponse(&items[i])
+	}
+	return result
+}
+
+func (h *Handler) ListResearchContexts(w http.ResponseWriter, r *http.Request) {
+	var userID *uuid.UUID
+	if raw := r.URL.Query().Get("userId"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			response.Error(w, http.StatusBadRequest, "INVALID_USER_ID", "userId must be a UUID")
+			return
+		}
+		userID = &parsed
+	}
+	items, err := h.service.ListResearchContexts(r.Context(), userID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchContextResponses(items)
+	response.Collection(w, result, len(result))
+}
+
+func (h *Handler) CreateResearchContext(w http.ResponseWriter, r *http.Request) {
+	var request CreateResearchContextRequest
+	if !h.decode(w, r, &request) {
+		return
+	}
+	item, err := h.service.CreateResearchContext(r.Context(), request)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusCreated, researchContextResponse(item))
+}
+
+func (h *Handler) UpdateResearchContext(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "contextID")
+	if !ok {
+		return
+	}
+	var request NewResearchContextRequest
+	if !h.decode(w, r, &request) {
+		return
+	}
+	item, err := h.service.UpdateResearchContext(r.Context(), id, request)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusOK, researchContextResponse(item))
+}
+
+func (h *Handler) DeleteResearchContext(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "contextID")
+	if !ok {
+		return
+	}
+	if err := h.service.DeleteResearchContext(r.Context(), id); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) ListTaskContexts(w http.ResponseWriter, r *http.Request) {
+	taskID, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	items, err := h.service.ListTaskContexts(r.Context(), taskID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchContextResponses(items)
+	response.Collection(w, result, len(result))
+}
+
+func (h *Handler) AttachTaskContexts(w http.ResponseWriter, r *http.Request) {
+	taskID, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	var request AttachResearchContextsRequest
+	if !h.decode(w, r, &request) {
+		return
+	}
+	items, err := h.service.AttachTaskContexts(r.Context(), taskID, request.ResearchContextIDs)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchContextResponses(items)
+	response.Collection(w, result, len(result))
+}
+
+func (h *Handler) DetachTaskContext(w http.ResponseWriter, r *http.Request) {
+	taskID, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	contextID, ok := h.id(w, r, "contextID")
+	if !ok {
+		return
+	}
+	if err := h.service.DetachTaskContext(r.Context(), taskID, contextID); err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) AgentCreateResearchSource(w http.ResponseWriter, r *http.Request) {
 	taskID, ok := h.id(w, r, "taskID")
 	if !ok {
@@ -884,6 +1005,8 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) 
 		status, code, message = 404, "RESEARCH_TASK_NOT_FOUND", err.Error()
 	case errors.Is(err, ErrResearchTaskLinkNotFound):
 		status, code, message = 404, "RESEARCH_TASK_LINK_NOT_FOUND", err.Error()
+	case errors.Is(err, ErrResearchContextNotFound):
+		status, code, message = 404, "RESEARCH_CONTEXT_NOT_FOUND", err.Error()
 	case errors.Is(err, ErrInvalidResearchTaskState):
 		status, code, message = 409, "INVALID_RESEARCH_TASK_STATE", err.Error()
 	case errors.Is(err, ErrResearchTaskParentCycle):

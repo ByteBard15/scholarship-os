@@ -18,7 +18,7 @@ type GORMRepository struct{ db *gorm.DB }
 
 func NewGORMRepository(db *gorm.DB) *GORMRepository { return &GORMRepository{db: db} }
 
-func (r *GORMRepository) CreateResearchTask(ctx context.Context, task *ResearchTask, links []ResearchTaskLink) error {
+func (r *GORMRepository) CreateResearchTask(ctx context.Context, task *ResearchTask, links []ResearchTaskLink, newContexts []ResearchContext, contextIDs []uuid.UUID) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(task).Error; err != nil {
 			return err
@@ -27,10 +27,36 @@ func (r *GORMRepository) CreateResearchTask(ctx context.Context, task *ResearchT
 			links[i].ResearchTaskID = task.ID
 		}
 		if len(links) > 0 {
-			return tx.Create(&links).Error
+			if err := tx.Create(&links).Error; err != nil {
+				return err
+			}
 		}
-		return nil
+		if len(newContexts) > 0 {
+			if err := tx.Create(&newContexts).Error; err != nil {
+				return err
+			}
+			for i := range newContexts {
+				contextIDs = append(contextIDs, newContexts[i].ID)
+			}
+		}
+		return attachTaskContexts(tx, task.ID, contextIDs)
 	})
+}
+
+func attachTaskContexts(tx *gorm.DB, taskID uuid.UUID, contextIDs []uuid.UUID) error {
+	if len(contextIDs) == 0 {
+		return nil
+	}
+	links := make([]ResearchTaskContext, 0, len(contextIDs))
+	seen := make(map[uuid.UUID]struct{}, len(contextIDs))
+	for _, contextID := range contextIDs {
+		if _, exists := seen[contextID]; exists {
+			continue
+		}
+		seen[contextID] = struct{}{}
+		links = append(links, ResearchTaskContext{ResearchTaskID: taskID, ResearchContextID: contextID})
+	}
+	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&links).Error
 }
 
 func (r *GORMRepository) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) (items []ResearchTask, err error) {
@@ -163,6 +189,54 @@ func (r *GORMRepository) UpdateTaskLink(ctx context.Context, link *ResearchTaskL
 
 func (r *GORMRepository) DeleteTaskLink(ctx context.Context, link *ResearchTaskLink) error {
 	return r.db.WithContext(ctx).Delete(link).Error
+}
+
+func (r *GORMRepository) ListResearchContexts(ctx context.Context, userID *uuid.UUID) (items []ResearchContext, err error) {
+	query := r.db.WithContext(ctx)
+	if userID != nil {
+		query = query.Where("user_id = ?", *userID)
+	}
+	err = query.Order("updated_at DESC").Find(&items).Error
+	return
+}
+
+func (r *GORMRepository) GetResearchContext(ctx context.Context, id uuid.UUID) (*ResearchContext, error) {
+	var item ResearchContext
+	err := r.db.WithContext(ctx).First(&item, "id = ?", id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrResearchContextNotFound
+	}
+	return &item, err
+}
+
+func (r *GORMRepository) CreateResearchContext(ctx context.Context, item *ResearchContext) error {
+	return r.db.WithContext(ctx).Create(item).Error
+}
+
+func (r *GORMRepository) UpdateResearchContext(ctx context.Context, item *ResearchContext) error {
+	return r.db.WithContext(ctx).Save(item).Error
+}
+
+func (r *GORMRepository) DeleteResearchContext(ctx context.Context, item *ResearchContext) error {
+	return r.db.WithContext(ctx).Delete(item).Error
+}
+
+func (r *GORMRepository) ListTaskContexts(ctx context.Context, taskID uuid.UUID) (items []ResearchContext, err error) {
+	err = r.db.WithContext(ctx).
+		Joins("JOIN research_task_contexts rtc ON rtc.research_context_id = research_contexts.id").
+		Where("rtc.research_task_id = ?", taskID).
+		Order("rtc.created_at ASC").Find(&items).Error
+	return
+}
+
+func (r *GORMRepository) AttachTaskContexts(ctx context.Context, taskID uuid.UUID, contextIDs []uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return attachTaskContexts(tx, taskID, contextIDs)
+	})
+}
+
+func (r *GORMRepository) DetachTaskContext(ctx context.Context, taskID, contextID uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("research_task_id = ? AND research_context_id = ?", taskID, contextID).Delete(&ResearchTaskContext{}).Error
 }
 
 func (r *GORMRepository) ListTaskOutputs(ctx context.Context, taskID uuid.UUID) (items []ResearchTaskOutput, err error) {

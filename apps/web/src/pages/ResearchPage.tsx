@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { createResearchTask, workflowKeys } from "../features/workflow/api";
-import { useResearchTasks } from "../features/workflow/queries";
+import {
+  useResearchContexts,
+  useResearchTasks,
+} from "../features/workflow/queries";
 import { useAuth } from "../features/auth/AuthProvider";
 
 export function ResearchPage() {
@@ -19,6 +22,7 @@ export function ResearchPage() {
     ),
   ).toString();
   const tasks = useResearchTasks(query ? `?${query}` : "");
+  const contexts = useResearchContexts(userId);
   const client = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -26,6 +30,10 @@ export function ResearchPage() {
   const [type, setType] = useState("scholarship_research");
   const [taskPriority, setTaskPriority] = useState("normal");
   const [link, setLink] = useState("");
+  const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
+  const [newContexts, setNewContexts] = useState([
+    { question: "", answer: "" },
+  ]);
   const [queue, setQueue] = useState(false);
   const create = useMutation({
     mutationFn: () =>
@@ -38,6 +46,10 @@ export function ResearchPage() {
           taskType: type,
           priority: taskPriority,
           links: link ? [{ url: link, linkType: "official" }] : [],
+          researchContextIds: selectedContextIds,
+          newResearchContexts: newContexts.filter(
+            (item) => item.question.trim() && item.answer.trim(),
+          ),
         },
         queue,
       ),
@@ -46,6 +58,8 @@ export function ResearchPage() {
       setDescription("");
       setInstructions("");
       setLink("");
+      setSelectedContextIds([]);
+      setNewContexts([{ question: "", answer: "" }]);
       void client.invalidateQueries({ queryKey: workflowKeys.all });
     },
   });
@@ -90,6 +104,102 @@ export function ResearchPage() {
           value={link}
           onChange={(event) => setLink(event.target.value)}
         />
+        <fieldset className="rounded border p-4 md:col-span-2">
+          <legend className="px-2 text-sm font-medium">
+            Reusable research context
+          </legend>
+          <p className="mb-3 text-xs text-slate-500">
+            Select saved answers or add new question-and-answer context. New
+            entries are saved to your context library and can be reused by
+            later research tasks.
+          </p>
+          {contexts.data?.data.length ? (
+            <div className="mb-4 grid gap-2">
+              {contexts.data.data.map((context) => (
+                <label className="flex gap-2 rounded bg-slate-50 p-3 text-sm" key={context.id}>
+                  <input
+                    checked={selectedContextIds.includes(context.id)}
+                    onChange={(event) =>
+                      setSelectedContextIds((current) =>
+                        event.target.checked
+                          ? [...current, context.id]
+                          : current.filter((id) => id !== context.id),
+                      )
+                    }
+                    type="checkbox"
+                  />
+                  <span>
+                    <strong>{context.question}</strong>
+                    <span className="mt-1 block text-slate-600">
+                      {context.answer}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          ) : null}
+          <div className="grid gap-3">
+            {newContexts.map((context, index) => (
+              <div className="grid gap-2 rounded bg-slate-50 p-3" key={index}>
+                <input
+                  className="rounded border px-3 py-2"
+                  placeholder="Question, e.g. What courses interest you?"
+                  required={Boolean(context.question.trim() || context.answer.trim())}
+                  value={context.question}
+                  onChange={(event) =>
+                    setNewContexts((current) =>
+                      current.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, question: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                <textarea
+                  className="rounded border px-3 py-2"
+                  placeholder="Answer or existing personal-statement material"
+                  required={Boolean(context.question.trim() || context.answer.trim())}
+                  value={context.answer}
+                  onChange={(event) =>
+                    setNewContexts((current) =>
+                      current.map((item, itemIndex) =>
+                        itemIndex === index
+                          ? { ...item, answer: event.target.value }
+                          : item,
+                      ),
+                    )
+                  }
+                />
+                {newContexts.length > 1 && (
+                  <button
+                    className="justify-self-start text-xs text-red-700"
+                    onClick={() =>
+                      setNewContexts((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index),
+                      )
+                    }
+                    type="button"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <button
+            className="mt-3 rounded border px-3 py-2 text-sm"
+            onClick={() =>
+              setNewContexts((current) => [
+                ...current,
+                { question: "", answer: "" },
+              ])
+            }
+            type="button"
+          >
+            Add context question
+          </button>
+        </fieldset>
         <select
           className="rounded border px-3 py-2"
           value={type}

@@ -5,6 +5,7 @@ import "errors"
 var (
 	ErrResearchTaskNotFound        = errors.New("research task not found")
 	ErrResearchTaskLinkNotFound    = errors.New("research task link not found")
+	ErrResearchContextNotFound     = errors.New("research context not found")
 	ErrInvalidResearchTaskState    = errors.New("invalid research task state")
 	ErrResearchTaskParentCycle     = errors.New("research task parent cycle")
 	ErrInvalidResearchTaskParent   = errors.New("invalid research task parent")

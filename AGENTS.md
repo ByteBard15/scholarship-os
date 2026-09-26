@@ -43,6 +43,7 @@ The backend flow is handler → service → repository → GORM → PostgreSQL.
 - Agents and integrations use `internal/agenttools`; never expose a generic database tool.
 - No discovered opportunity becomes an `Application` until a human explicitly approves its `ApplicationProposal`.
 - `ResearchTask` input, links, runs, sources, findings, proposals, and outputs retain a traceable lineage.
+- `ResearchContext` is reusable user-owned question/answer input that may be attached to multiple Research Tasks. It informs research but must not be treated as canonical profile data or as an Information Request.
 - Prefill agents may write supported factual fields and suggested answers, but subjective answers remain reviewable and unsupported facts become deduplicated `InformationRequest` records.
 - An `InformationRequest` becomes completed only after its response has been transactionally applied to the controlled target. Completed requests are not reopened implicitly.
 

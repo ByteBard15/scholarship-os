@@ -11,6 +11,7 @@ import {
   useResearchTask,
   useResearchTasks,
   useTaskFindings,
+  useTaskContexts,
   useTaskLinks,
   useTaskOutputs,
   useTaskRuns,
@@ -26,6 +27,7 @@ export function ResearchDetailPage() {
   const userId = user?.id ?? "";
   const task = useResearchTask(id),
     links = useTaskLinks(id),
+    taskContexts = useTaskContexts(id),
     outputs = useTaskOutputs(id),
     runs = useTaskRuns(id),
     proposals = useProposals(userId),
@@ -133,6 +135,22 @@ export function ResearchDetailPage() {
             ))
           ) : (
             <p className="text-sm text-slate-500">No links.</p>
+          )}
+        </Panel>
+        <Panel title="Research Context" wide>
+          {taskContexts.data?.data.length ? (
+            taskContexts.data.data.map((context) => (
+              <div className="border-b py-3 text-sm" key={context.id}>
+                <p className="font-medium">{context.question}</p>
+                <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                  {context.answer}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-slate-500">
+              No reusable context attached.
+            </p>
           )}
         </Panel>
       </div>

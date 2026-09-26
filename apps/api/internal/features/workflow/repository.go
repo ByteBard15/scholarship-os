@@ -31,7 +31,7 @@ type PrefillPersistence struct {
 }
 
 type Repository interface {
-	CreateResearchTask(context.Context, *ResearchTask, []ResearchTaskLink) error
+	CreateResearchTask(context.Context, *ResearchTask, []ResearchTaskLink, []ResearchContext, []uuid.UUID) error
 	ListResearchTasks(context.Context, ResearchTaskFilters) ([]ResearchTask, error)
 	GetResearchTask(context.Context, uuid.UUID) (*ResearchTask, error)
 	UpdateResearchTask(context.Context, *ResearchTask) error
@@ -41,6 +41,14 @@ type Repository interface {
 	CreateTaskLink(context.Context, *ResearchTaskLink) error
 	UpdateTaskLink(context.Context, *ResearchTaskLink) error
 	DeleteTaskLink(context.Context, *ResearchTaskLink) error
+	ListResearchContexts(context.Context, *uuid.UUID) ([]ResearchContext, error)
+	GetResearchContext(context.Context, uuid.UUID) (*ResearchContext, error)
+	CreateResearchContext(context.Context, *ResearchContext) error
+	UpdateResearchContext(context.Context, *ResearchContext) error
+	DeleteResearchContext(context.Context, *ResearchContext) error
+	ListTaskContexts(context.Context, uuid.UUID) ([]ResearchContext, error)
+	AttachTaskContexts(context.Context, uuid.UUID, []uuid.UUID) error
+	DetachTaskContext(context.Context, uuid.UUID, uuid.UUID) error
 	ListTaskOutputs(context.Context, uuid.UUID) ([]ResearchTaskOutput, error)
 	ListTaskRuns(context.Context, uuid.UUID) ([]application.ResearchRun, error)
 	ListRunSources(context.Context, uuid.UUID) ([]application.ResearchSource, error)

@@ -49,6 +49,23 @@ type ResearchTaskLink struct {
 	LinkType       *string
 }
 
+// ResearchContext is reusable user-owned background information supplied to
+// research agents. It is deliberately separate from InformationRequest, which
+// represents missing information in an application workflow.
+type ResearchContext struct {
+	Base
+	UserID    uuid.UUID `gorm:"type:uuid;not null;index"`
+	Question  string    `gorm:"type:text;not null"`
+	Answer    string    `gorm:"type:text;not null"`
+	DeletedAt gorm.DeletedAt
+}
+
+type ResearchTaskContext struct {
+	ResearchTaskID    uuid.UUID `gorm:"type:uuid;primaryKey"`
+	ResearchContextID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	CreatedAt         time.Time
+}
+
 type ResearchTaskOutput struct {
 	ID             uuid.UUID `gorm:"type:uuid;primaryKey"`
 	ResearchTaskID uuid.UUID `gorm:"type:uuid;not null;index"`
@@ -251,6 +268,8 @@ func (v *AgentActivity) BeforeCreate(_ *gorm.DB) error {
 
 func (ResearchTask) TableName() string               { return "research_tasks" }
 func (ResearchTaskLink) TableName() string           { return "research_task_links" }
+func (ResearchContext) TableName() string            { return "research_contexts" }
+func (ResearchTaskContext) TableName() string        { return "research_task_contexts" }
 func (ResearchTaskOutput) TableName() string         { return "research_task_outputs" }
 func (ApplicationProposal) TableName() string        { return "application_proposals" }
 func (ApplicationProposalSource) TableName() string  { return "application_proposal_sources" }

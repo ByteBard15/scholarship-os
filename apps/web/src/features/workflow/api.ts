@@ -9,6 +9,7 @@ import type {
   PreparationSummary,
   Questionnaire,
   ResearchFinding,
+  ResearchContext,
   ResearchRun,
   ResearchSource,
   ResearchTask,
@@ -39,6 +40,8 @@ export const createResearchTask = (
     priority?: string;
     targetApplicationId?: string;
     links: Array<{ label?: string; url: string; linkType?: string }>;
+    researchContextIds: string[];
+    newResearchContexts: Array<{ question: string; answer: string }>;
   },
   queue: boolean,
 ) =>
@@ -56,6 +59,23 @@ export const transitionResearchTask = (
   );
 export const listTaskLinks = (id: string) =>
   getJSON<Collection<ResearchTaskLink>>(`/api/v1/research-tasks/${id}/links`);
+export const listResearchContexts = (userId?: string) =>
+  getJSON<Collection<ResearchContext>>(
+    `/api/v1/research-contexts${userId ? `?userId=${userId}` : ""}`,
+  );
+export const createResearchContext = (input: {
+  userId: string;
+  question: string;
+  answer: string;
+}) =>
+  requestJSON<Envelope<ResearchContext>>("/api/v1/research-contexts", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+export const listTaskContexts = (id: string) =>
+  getJSON<Collection<ResearchContext>>(
+    `/api/v1/research-tasks/${id}/contexts`,
+  );
 export const listTaskOutputs = (id: string) =>
   getJSON<Collection<ResearchTaskOutput>>(
     `/api/v1/research-tasks/${id}/outputs`,

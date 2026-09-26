@@ -40,6 +40,15 @@ export interface ResearchTaskLink {
   linkType?: string;
 }
 
+export interface ResearchContext {
+	id: string;
+	userId: string;
+	question: string;
+	answer: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
 export interface ResearchTaskOutput {
   id: string;
   researchTaskId: string;

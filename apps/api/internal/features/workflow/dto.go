@@ -8,17 +8,42 @@ import (
 )
 
 type CreateResearchTaskRequest struct {
-	UserID              uuid.UUID         `json:"userId" validate:"required"`
-	ParentTaskID        *uuid.UUID        `json:"parentTaskId"`
-	TargetApplicationID *uuid.UUID        `json:"targetApplicationId"`
-	Title               string            `json:"title" validate:"required,max=250"`
-	Description         *string           `json:"description"`
-	Instructions        *string           `json:"instructions"`
-	TaskType            string            `json:"taskType" validate:"required"`
-	Priority            *string           `json:"priority" validate:"omitempty,oneof=low normal high urgent"`
-	DueAt               *time.Time        `json:"dueAt"`
-	ResearchConfig      json.RawMessage   `json:"researchConfig"`
-	Links               []TaskLinkRequest `json:"links" validate:"dive"`
+	UserID              uuid.UUID                   `json:"userId" validate:"required"`
+	ParentTaskID        *uuid.UUID                  `json:"parentTaskId"`
+	TargetApplicationID *uuid.UUID                  `json:"targetApplicationId"`
+	Title               string                      `json:"title" validate:"required,max=250"`
+	Description         *string                     `json:"description"`
+	Instructions        *string                     `json:"instructions"`
+	TaskType            string                      `json:"taskType" validate:"required"`
+	Priority            *string                     `json:"priority" validate:"omitempty,oneof=low normal high urgent"`
+	DueAt               *time.Time                  `json:"dueAt"`
+	ResearchConfig      json.RawMessage             `json:"researchConfig"`
+	Links               []TaskLinkRequest           `json:"links" validate:"dive"`
+	ResearchContextIDs  []uuid.UUID                 `json:"researchContextIds" validate:"dive,required"`
+	NewResearchContexts []NewResearchContextRequest `json:"newResearchContexts" validate:"dive"`
+}
+
+type NewResearchContextRequest struct {
+	Question string `json:"question" validate:"required,max=2000"`
+	Answer   string `json:"answer" validate:"required,max=20000"`
+}
+
+type CreateResearchContextRequest struct {
+	UserID uuid.UUID `json:"userId" validate:"required"`
+	NewResearchContextRequest
+}
+
+type AttachResearchContextsRequest struct {
+	ResearchContextIDs []uuid.UUID `json:"researchContextIds" validate:"required,min=1,dive,required"`
+}
+
+type ResearchContextResponse struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"userId"`
+	Question  string    `json:"question"`
+	Answer    string    `json:"answer"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type UpdateResearchTaskRequest struct {
