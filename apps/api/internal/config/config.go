@@ -42,7 +42,7 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	maxOpen, err := integer("DATABASE_MAX_OPEN_CONNS", 25)
+	maxOpen, err := integer("DATABASE_MAX_OPEN_CONNS", 10)
 	if err != nil {
 		return Config{}, err
 	}
@@ -57,7 +57,7 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		Environment:    env,
-		Port:           value("APP_PORT", "8080"),
+		Port:           value("PORT", "8080"),
 		WebOrigin:      value("WEB_ORIGIN", "http://localhost:5173"),
 		UploadDir:      value("UPLOAD_DIR", "../../.var/uploads"),
 		MaxUploadBytes: maxUploadBytes,
