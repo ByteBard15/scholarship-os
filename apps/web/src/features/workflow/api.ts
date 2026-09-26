@@ -39,6 +39,7 @@ export const createResearchTask = (
     taskType: string;
     priority?: string;
     targetApplicationId?: string;
+    profileId?: string;
     links: Array<{ label?: string; url: string; linkType?: string }>;
     researchContextIds: string[];
     newResearchContexts: Array<{ question: string; answer: string }>;
@@ -56,6 +57,32 @@ export const transitionResearchTask = (
   requestJSON<Envelope<ResearchTask>>(
     `/api/v1/research-tasks/${id}/${action}`,
     { method: "POST" },
+  );
+export const updateResearchTask = (
+  id: string,
+  input: {
+    title?: string;
+    description?: string;
+    instructions?: string;
+    taskType?: string;
+    priority?: string;
+    profileId?: string;
+    clearProfile?: boolean;
+  },
+) =>
+  requestJSON<Envelope<ResearchTask>>(`/api/v1/research-tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+export const attachTaskContexts = (id: string, researchContextIds: string[]) =>
+  requestJSON<Collection<ResearchContext>>(
+    `/api/v1/research-tasks/${id}/contexts`,
+    { method: "POST", body: JSON.stringify({ researchContextIds }) },
+  );
+export const detachTaskContext = (taskId: string, contextId: string) =>
+  requestJSON<void>(
+    `/api/v1/research-tasks/${taskId}/contexts/${contextId}`,
+    { method: "DELETE" },
   );
 export const listTaskLinks = (id: string) =>
   getJSON<Collection<ResearchTaskLink>>(`/api/v1/research-tasks/${id}/links`);

@@ -11,7 +11,9 @@
 - `GET .../{taskID}/runs`
 - `GET .../{taskID}/runs/{runID}/sources|findings`
 
-Creation accepts camelCase fields including `userId`, `taskType`, `targetApplicationId`, `researchConfig`, an optional links array, reusable `researchContextIds`, and `newResearchContexts`. Inline contexts are saved to the user's reusable context library and attached to the new task in the same transaction. `?queue=true` creates directly in the queued state.
+Creation accepts camelCase fields including `userId`, `profileId`, `taskType`, `targetApplicationId`, `researchConfig`, an optional links array, reusable `researchContextIds`, and `newResearchContexts`. Inline contexts are saved to the user's reusable context library and attached to the new task in the same transaction. The selected profile must belong to the task owner. A profile is required before the task can be queued.
+
+`PATCH /api/v1/research-tasks/{taskID}` updates core task fields, including `profileId`, only while the task is in `draft`. Links and context attachments are likewise mutable only in `draft`. Once queued, research input is frozen.
 
 The reusable context library uses:
 
@@ -24,7 +26,7 @@ Scoped research agents consume queued work through:
 
 - `GET /api/v1/agent/research-tasks?limit=N` — polls the oldest queued tasks; `N` defaults to 10 and is capped at 50.
 - `POST /api/v1/agent/research-tasks/{taskID}/start` — atomically claims one task and returns both the task and its new `researchRun`.
-- `GET .../{taskID}/links|contexts|runs` — loads agent input and recovers the current run ID.
+- `GET .../{taskID}/links|contexts|effective-profile|runs` — loads agent input, resolves the selected profile through the profile service, and recovers the current run ID.
 - `POST .../{taskID}/sources|findings` — persists typed, provenance-bearing results.
 - `POST /api/v1/agent/application-proposals` — creates a proposal for human review.
 - `POST .../{taskID}/complete` with `{ "researchRunId": "..." }` — finishes submission and marks the task/run `review_required`.

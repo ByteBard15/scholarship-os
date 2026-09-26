@@ -196,8 +196,9 @@ func newTestService(repo *fakeRepository, userID uuid.UUID, apps *fakeApplicatio
 func TestResearchTaskLifecycleCreatesProposalWithoutApplication(t *testing.T) {
 	ctx, userID := context.Background(), uuid.New()
 	repo := newFakeRepository()
-	service := newTestService(repo, userID, &fakeApplications{}, &fakeProfiles{})
-	task, err := service.CreateResearchTask(ctx, CreateResearchTaskRequest{UserID: userID, Title: "Example Scholarship", TaskType: "scholarship_research", Links: []TaskLinkRequest{{URL: "https://example.test/official"}}}, true)
+	profileID := uuid.New()
+	service := newTestService(repo, userID, &fakeApplications{}, &fakeProfiles{item: &profile.ApplicantProfile{Base: profile.Base{ID: profileID}, UserID: userID}})
+	task, err := service.CreateResearchTask(ctx, CreateResearchTaskRequest{UserID: userID, ProfileID: &profileID, Title: "Example Scholarship", TaskType: "scholarship_research", Links: []TaskLinkRequest{{URL: "https://example.test/official"}}}, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +243,8 @@ func TestResearchTaskQueueCancelAndRetryTransitions(t *testing.T) {
 	ctx, userID := context.Background(), uuid.New()
 	repo := newFakeRepository()
 	service := newTestService(repo, userID, &fakeApplications{}, &fakeProfiles{})
-	task := &ResearchTask{Base: Base{ID: uuid.New()}, UserID: userID, Status: "draft"}
+	profileID := uuid.New()
+	task := &ResearchTask{Base: Base{ID: uuid.New()}, UserID: userID, ProfileID: &profileID, Status: "draft"}
 	repo.tasks[task.ID] = task
 
 	if _, err := service.TransitionResearchTask(ctx, task.ID, "queue"); err != nil || task.Status != "queued" {

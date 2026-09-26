@@ -7,6 +7,8 @@ import {
   useResearchTasks,
 } from "../features/workflow/queries";
 import { useAuth } from "../features/auth/AuthProvider";
+import { useProfiles } from "../features/profile/queries";
+import { CollapsibleText } from "../components/CollapsibleText";
 
 export function ResearchPage() {
   const { user } = useAuth();
@@ -23,6 +25,7 @@ export function ResearchPage() {
   ).toString();
   const tasks = useResearchTasks(query ? `?${query}` : "");
   const contexts = useResearchContexts(userId);
+  const profiles = useProfiles(userId);
   const client = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -30,13 +33,13 @@ export function ResearchPage() {
   const [type, setType] = useState("scholarship_research");
   const [taskPriority, setTaskPriority] = useState("normal");
   const [link, setLink] = useState("");
+  const [profileId, setProfileId] = useState("");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
   const [newContexts, setNewContexts] = useState([
     { question: "", answer: "" },
   ]);
-  const [queue, setQueue] = useState(false);
   const create = useMutation({
-    mutationFn: () =>
+    mutationFn: (queue: boolean) =>
       createResearchTask(
         {
           userId,
@@ -45,6 +48,7 @@ export function ResearchPage() {
           instructions: instructions || undefined,
           taskType: type,
           priority: taskPriority,
+          profileId: profileId || undefined,
           links: link ? [{ url: link, linkType: "official" }] : [],
           researchContextIds: selectedContextIds,
           newResearchContexts: newContexts.filter(
@@ -58,6 +62,7 @@ export function ResearchPage() {
       setDescription("");
       setInstructions("");
       setLink("");
+      setProfileId("");
       setSelectedContextIds([]);
       setNewContexts([{ question: "", answer: "" }]);
       void client.invalidateQueries({ queryKey: workflowKeys.all });
@@ -65,7 +70,8 @@ export function ResearchPage() {
   });
   function submit(event: FormEvent) {
     event.preventDefault();
-    create.mutate();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    create.mutate(submitter?.value === "queue");
   }
   return (
     <section>
@@ -104,6 +110,22 @@ export function ResearchPage() {
           value={link}
           onChange={(event) => setLink(event.target.value)}
         />
+        <label className="grid gap-1 text-sm md:col-span-2">
+          Applicant profile
+          <select
+            className="rounded border px-3 py-2"
+            required
+            value={profileId}
+            onChange={(event) => setProfileId(event.target.value)}
+          >
+            <option value="">Select a profile</option>
+            {profiles.data?.data.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.name} ({profile.profileType})
+              </option>
+            ))}
+          </select>
+        </label>
         <fieldset className="rounded border p-4 md:col-span-2">
           <legend className="px-2 text-sm font-medium">
             Reusable research context
@@ -130,9 +152,12 @@ export function ResearchPage() {
                   />
                   <span>
                     <strong>{context.question}</strong>
-                    <span className="mt-1 block text-slate-600">
+                    <CollapsibleText
+                      className="mt-1 text-slate-600"
+                      lines={5}
+                    >
                       {context.answer}
-                    </span>
+                    </CollapsibleText>
                   </span>
                 </label>
               ))}
@@ -224,14 +249,14 @@ export function ResearchPage() {
         <div className="flex gap-3 md:col-span-2">
           <button
             type="submit"
-            onClick={() => setQueue(false)}
+            value="draft"
             className="rounded border px-4 py-2"
           >
             Save Draft
           </button>
           <button
             type="submit"
-            onClick={() => setQueue(true)}
+            value="queue"
             className="rounded bg-indigo-700 px-4 py-2 text-white"
           >
             Save &amp; Queue

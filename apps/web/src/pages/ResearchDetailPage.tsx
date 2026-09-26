@@ -1,14 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import {
+  attachTaskContexts,
   approveProposal,
+  detachTaskContext,
   reviewProposal,
   transitionResearchTask,
+  updateResearchTask,
   workflowKeys,
 } from "../features/workflow/api";
 import {
   useProposals,
   useResearchTask,
+  useResearchContexts,
   useResearchTasks,
   useTaskFindings,
   useTaskContexts,
@@ -20,6 +24,7 @@ import {
 import { useProfiles } from "../features/profile/queries";
 import { useState } from "react";
 import { useAuth } from "../features/auth/AuthProvider";
+import { CollapsibleText } from "../components/CollapsibleText";
 
 export function ResearchDetailPage() {
   const { id = "" } = useParams();
@@ -28,6 +33,7 @@ export function ResearchDetailPage() {
   const task = useResearchTask(id),
     links = useTaskLinks(id),
     taskContexts = useTaskContexts(id),
+    contexts = useResearchContexts(userId),
     outputs = useTaskOutputs(id),
     runs = useTaskRuns(id),
     proposals = useProposals(userId),
@@ -114,7 +120,22 @@ export function ResearchDetailPage() {
           </button>
         )}
       </div>
+      {item.status === "draft" && !contexts.isPending && !taskContexts.isPending && (
+        <DraftTaskEditor
+          contexts={contexts.data?.data ?? []}
+          item={item}
+          profiles={profiles.data?.data ?? []}
+          selectedContexts={taskContexts.data?.data ?? []}
+          onSaved={refresh}
+        />
+      )}
       <div className="mt-6 grid gap-5 md:grid-cols-2">
+        <Panel title="Selected Profile">
+          <p className="text-sm">
+            {profiles.data?.data.find((profile) => profile.id === item.profileId)?.name ??
+              "No profile selected"}
+          </p>
+        </Panel>
         <Panel title="Instructions">
           <p className="text-sm whitespace-pre-wrap">
             {item.instructions ?? "No custom instructions."}
@@ -142,9 +163,9 @@ export function ResearchDetailPage() {
             taskContexts.data.data.map((context) => (
               <div className="border-b py-3 text-sm" key={context.id}>
                 <p className="font-medium">{context.question}</p>
-                <p className="mt-1 whitespace-pre-wrap text-slate-600">
+                <CollapsibleText className="mt-1 text-slate-600" lines={5}>
                   {context.answer}
-                </p>
+                </CollapsibleText>
               </div>
             ))
           ) : (
@@ -317,6 +338,100 @@ export function ResearchDetailPage() {
         )}
       </Panel>
     </section>
+  );
+}
+
+function DraftTaskEditor({
+  item,
+  profiles,
+  contexts,
+  selectedContexts,
+  onSaved,
+}: {
+  item: import("../features/workflow/types").ResearchTask;
+  profiles: import("../features/profile/types").Profile[];
+  contexts: import("../features/workflow/types").ResearchContext[];
+  selectedContexts: import("../features/workflow/types").ResearchContext[];
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [description, setDescription] = useState(item.description ?? "");
+  const [instructions, setInstructions] = useState(item.instructions ?? "");
+  const [taskType, setTaskType] = useState(item.taskType);
+  const [priority, setPriority] = useState(item.priority ?? "normal");
+  const [profileId, setProfileId] = useState(item.profileId ?? "");
+  const [contextIds, setContextIds] = useState(
+    selectedContexts.map((context) => context.id),
+  );
+  const save = useMutation({
+    mutationFn: async () => {
+      await updateResearchTask(item.id, {
+        title,
+        description,
+        instructions,
+        taskType,
+        priority,
+        profileId: profileId || undefined,
+        clearProfile: !profileId,
+      });
+      const attached = new Set(selectedContexts.map((context) => context.id));
+      const selected = new Set(contextIds);
+      const additions = contextIds.filter((id) => !attached.has(id));
+      const removals = selectedContexts.filter((context) => !selected.has(context.id));
+      if (additions.length) await attachTaskContexts(item.id, additions);
+      await Promise.all(
+        removals.map((context) => detachTaskContext(item.id, context.id)),
+      );
+    },
+    onSuccess: onSaved,
+  });
+  return (
+    <form
+      className="mt-6 grid gap-3 rounded-lg border border-indigo-200 bg-white p-5 md:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      <h2 className="font-semibold md:col-span-2">Edit Draft Research Task</h2>
+      <input className="rounded border px-3 py-2 md:col-span-2" required value={title} onChange={(event) => setTitle(event.target.value)} />
+      <textarea className="rounded border px-3 py-2" placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
+      <textarea className="rounded border px-3 py-2" placeholder="Instructions" value={instructions} onChange={(event) => setInstructions(event.target.value)} />
+      <select className="rounded border px-3 py-2" value={taskType} onChange={(event) => setTaskType(event.target.value)}>
+        <option value="scholarship_research">Scholarship research</option>
+        <option value="scholarship_discovery">Scholarship discovery</option>
+        <option value="programme_research">Programme research</option>
+        <option value="funding_research">Funding research</option>
+        <option value="general_research">General research</option>
+      </select>
+      <select className="rounded border px-3 py-2" value={priority} onChange={(event) => setPriority(event.target.value)}>
+        <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+      </select>
+      <label className="grid gap-1 text-sm md:col-span-2">Applicant profile
+        <select className="rounded border px-3 py-2" required value={profileId} onChange={(event) => setProfileId(event.target.value)}>
+          <option value="">Select a profile</option>
+          {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} ({profile.profileType})</option>)}
+        </select>
+      </label>
+      <fieldset className="rounded border p-3 md:col-span-2">
+        <legend className="px-2 text-sm font-medium">Attached research context</legend>
+        <div className="grid gap-2">
+          {contexts.map((context) => (
+            <label className="flex gap-2 text-sm" key={context.id}>
+              <input type="checkbox" checked={contextIds.includes(context.id)} onChange={(event) => setContextIds((current) => event.target.checked ? [...current, context.id] : current.filter((id) => id !== context.id))} />
+              <span>
+                <strong>{context.question}</strong>
+                <CollapsibleText className="mt-1 text-slate-500" lines={5}>
+                  {context.answer}
+                </CollapsibleText>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <button className="rounded bg-indigo-700 px-4 py-2 text-white md:col-span-2" disabled={save.isPending} type="submit">{save.isPending ? "Saving…" : "Save draft changes"}</button>
+      {save.isError && <p className="text-sm text-red-700 md:col-span-2">{save.error.message}</p>}
+    </form>
   );
 }
 function Panel({

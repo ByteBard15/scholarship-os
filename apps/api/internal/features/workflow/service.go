@@ -45,8 +45,11 @@ func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearch
 	if _, err := s.users.GetByID(ctx, request.UserID); err != nil {
 		return nil, err
 	}
-	task := &ResearchTask{UserID: request.UserID, ParentTaskID: request.ParentTaskID, TargetApplicationID: request.TargetApplicationID, Title: strings.TrimSpace(request.Title), Description: request.Description, Instructions: request.Instructions, TaskType: request.TaskType, Status: "draft", Priority: request.Priority, DueAt: request.DueAt, ResearchConfig: profile.JSON(request.ResearchConfig)}
+	task := &ResearchTask{UserID: request.UserID, ParentTaskID: request.ParentTaskID, TargetApplicationID: request.TargetApplicationID, ProfileID: request.ProfileID, Title: strings.TrimSpace(request.Title), Description: request.Description, Instructions: request.Instructions, TaskType: request.TaskType, Status: "draft", Priority: request.Priority, DueAt: request.DueAt, ResearchConfig: profile.JSON(request.ResearchConfig)}
 	if queue {
+		if task.ProfileID == nil {
+			return nil, validationError("profileId is required before a research task can be queued")
+		}
 		task.Status = "queued"
 	}
 	if err := s.validateTaskRelationships(ctx, task); err != nil {
@@ -138,7 +141,7 @@ func (s *Service) AttachTaskContexts(ctx context.Context, taskID uuid.UUID, ids 
 	if err != nil {
 		return nil, err
 	}
-	if task.Status == "running" || task.Status == "review_required" || task.Status == "completed" || task.Status == "cancelled" {
+	if task.Status != "draft" {
 		return nil, ErrInvalidResearchTaskState
 	}
 	if err = s.validateResearchContextOwnership(ctx, task.UserID, ids); err != nil {
@@ -155,7 +158,7 @@ func (s *Service) DetachTaskContext(ctx context.Context, taskID, contextID uuid.
 	if err != nil {
 		return err
 	}
-	if task.Status == "running" || task.Status == "review_required" || task.Status == "completed" || task.Status == "cancelled" {
+	if task.Status != "draft" {
 		return ErrInvalidResearchTaskState
 	}
 	if err = s.validateResearchContextOwnership(ctx, task.UserID, []uuid.UUID{contextID}); err != nil {
@@ -185,11 +188,11 @@ func (s *Service) GetResearchTask(ctx context.Context, id uuid.UUID) (*ResearchT
 }
 
 func (s *Service) UpdateResearchTask(ctx context.Context, id uuid.UUID, request UpdateResearchTaskRequest) (*ResearchTask, error) {
-	task, err := s.repo.GetResearchTask(ctx, id)
+	task, err := s.GetResearchTask(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if task.Status == "running" {
+	if task.Status != "draft" {
 		return nil, ErrInvalidResearchTaskState
 	}
 	if request.Title != nil {
@@ -210,6 +213,11 @@ func (s *Service) UpdateResearchTask(ctx context.Context, id uuid.UUID, request 
 	if request.TargetApplicationID != nil {
 		task.TargetApplicationID = request.TargetApplicationID
 	}
+	if request.ClearProfile {
+		task.ProfileID = nil
+	} else if request.ProfileID != nil {
+		task.ProfileID = request.ProfileID
+	}
 	if request.Priority != nil {
 		task.Priority = request.Priority
 	}
@@ -226,7 +234,7 @@ func (s *Service) UpdateResearchTask(ctx context.Context, id uuid.UUID, request 
 }
 
 func (s *Service) DeleteResearchTask(ctx context.Context, id uuid.UUID) error {
-	task, err := s.repo.GetResearchTask(ctx, id)
+	task, err := s.GetResearchTask(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -270,7 +278,24 @@ func (s *Service) validateTaskRelationships(ctx context.Context, task *ResearchT
 			return validationError("target application belongs to another user")
 		}
 	}
+	if task.ProfileID != nil {
+		selected, err := s.profiles.Get(ctx, *task.ProfileID)
+		if err != nil || selected.UserID != task.UserID {
+			return validationError("profileId must reference a profile owned by the task user")
+		}
+	}
 	return nil
+}
+
+func (s *Service) GetResearchTaskEffectiveProfile(ctx context.Context, taskID uuid.UUID) (*profile.EffectiveProfileResponse, error) {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if task.ProfileID == nil {
+		return nil, validationError("research task does not have a selected profile")
+	}
+	return s.profiles.ResolveEffectiveProfile(ctx, *task.ProfileID)
 }
 
 func (s *Service) TransitionResearchTask(ctx context.Context, id uuid.UUID, action string) (*ResearchTask, error) {
@@ -283,6 +308,9 @@ func (s *Service) TransitionResearchTask(ctx context.Context, id uuid.UUID, acti
 	case "queue":
 		if task.Status != "draft" && task.Status != "ready" {
 			return nil, ErrInvalidResearchTaskState
+		}
+		if task.ProfileID == nil {
+			return nil, validationError("profileId is required before a research task can be queued")
 		}
 		task.Status = "queued"
 	case "cancel":
@@ -430,13 +458,24 @@ func (s *Service) ListTaskLinks(ctx context.Context, taskID uuid.UUID) ([]Resear
 	return s.repo.ListTaskLinks(ctx, taskID)
 }
 func (s *Service) CreateTaskLink(ctx context.Context, taskID uuid.UUID, request TaskLinkRequest) (*ResearchTaskLink, error) {
-	if _, err := s.repo.GetResearchTask(ctx, taskID); err != nil {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
 		return nil, err
+	}
+	if task.Status != "draft" {
+		return nil, ErrInvalidResearchTaskState
 	}
 	link := &ResearchTaskLink{ResearchTaskID: taskID, Label: request.Label, URL: request.URL, LinkType: request.LinkType}
 	return link, s.repo.CreateTaskLink(ctx, link)
 }
 func (s *Service) UpdateTaskLink(ctx context.Context, taskID, linkID uuid.UUID, request TaskLinkRequest) (*ResearchTaskLink, error) {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if task.Status != "draft" {
+		return nil, ErrInvalidResearchTaskState
+	}
 	link, err := s.repo.GetTaskLink(ctx, taskID, linkID)
 	if err != nil {
 		return nil, err
@@ -445,6 +484,13 @@ func (s *Service) UpdateTaskLink(ctx context.Context, taskID, linkID uuid.UUID, 
 	return link, s.repo.UpdateTaskLink(ctx, link)
 }
 func (s *Service) DeleteTaskLink(ctx context.Context, taskID, linkID uuid.UUID) error {
+	task, err := s.GetResearchTask(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.Status != "draft" {
+		return ErrInvalidResearchTaskState
+	}
 	link, err := s.repo.GetTaskLink(ctx, taskID, linkID)
 	if err != nil {
 		return err

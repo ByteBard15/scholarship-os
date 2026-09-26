@@ -26,6 +26,7 @@ type ResearchTask struct {
 	UserID              uuid.UUID  `gorm:"type:uuid;not null;index"`
 	ParentTaskID        *uuid.UUID `gorm:"type:uuid;index"`
 	TargetApplicationID *uuid.UUID `gorm:"type:uuid;index"`
+	ProfileID           *uuid.UUID `gorm:"type:uuid;index"`
 	Title               string     `gorm:"not null"`
 	Description         *string    `gorm:"type:text"`
 	Instructions        *string    `gorm:"type:text"`

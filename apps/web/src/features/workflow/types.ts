@@ -16,6 +16,7 @@ export interface ResearchTask {
   userId: string;
   parentTaskId?: string;
   targetApplicationId?: string;
+  profileId?: string;
   title: string;
   description?: string;
   instructions?: string;

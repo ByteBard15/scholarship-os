@@ -11,6 +11,7 @@ type CreateResearchTaskRequest struct {
 	UserID              uuid.UUID                   `json:"userId" validate:"required"`
 	ParentTaskID        *uuid.UUID                  `json:"parentTaskId"`
 	TargetApplicationID *uuid.UUID                  `json:"targetApplicationId"`
+	ProfileID           *uuid.UUID                  `json:"profileId"`
 	Title               string                      `json:"title" validate:"required,max=250"`
 	Description         *string                     `json:"description"`
 	Instructions        *string                     `json:"instructions"`
@@ -49,6 +50,8 @@ type ResearchContextResponse struct {
 type UpdateResearchTaskRequest struct {
 	ParentTaskID        *uuid.UUID      `json:"parentTaskId"`
 	TargetApplicationID *uuid.UUID      `json:"targetApplicationId"`
+	ProfileID           *uuid.UUID      `json:"profileId"`
+	ClearProfile        bool            `json:"clearProfile"`
 	Title               *string         `json:"title" validate:"omitempty,min=1,max=250"`
 	Description         *string         `json:"description"`
 	Instructions        *string         `json:"instructions"`
@@ -87,6 +90,7 @@ type ResearchTaskResponse struct {
 	UserID              uuid.UUID       `json:"userId"`
 	ParentTaskID        *uuid.UUID      `json:"parentTaskId,omitempty"`
 	TargetApplicationID *uuid.UUID      `json:"targetApplicationId,omitempty"`
+	ProfileID           *uuid.UUID      `json:"profileId,omitempty"`
 	Title               string          `json:"title"`
 	Description         *string         `json:"description,omitempty"`
 	Instructions        *string         `json:"instructions,omitempty"`

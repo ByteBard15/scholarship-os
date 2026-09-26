@@ -241,6 +241,19 @@ func (h *Handler) AgentGetEffectiveProfile(w http.ResponseWriter, r *http.Reques
 	response.Data(w, http.StatusOK, value)
 }
 
+func (h *Handler) AgentGetResearchTaskEffectiveProfile(w http.ResponseWriter, r *http.Request) {
+	taskID, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	value, err := h.service.GetResearchTaskEffectiveProfile(r.Context(), taskID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusOK, value)
+}
+
 func (h *Handler) AgentCreateInformationRequest(w http.ResponseWriter, r *http.Request) {
 	actor, ok := principal.PrincipalFromContext(r.Context())
 	if !ok || actor.UserID == nil {

@@ -1,6 +1,6 @@
 # Research Tasks
 
-`ResearchTask` is the user-owned inbox item for manual or agent research. It stores the objective, custom instructions, links, optional target Application, lifecycle timestamps, and parent/child lineage. Parent cycles and cross-user parenting are rejected.
+`ResearchTask` is the user-owned inbox item for manual or agent research. It stores the objective, custom instructions, selected Applicant Profile, links, optional target Application, lifecycle timestamps, and parent/child lineage. Parent cycles, cross-user parenting, and cross-user profile selection are rejected. Draft input can be edited, but it is frozen when the task is queued.
 
 `ResearchContext` is an independent, reusable user-owned question and answer, such as course interests or existing personal-statement material. The `research_task_contexts` join table lets multiple tasks consume the same context without duplicating it. This context informs research only: it is not an `InformationRequest`, does not represent missing application data, and never modifies the canonical Master Profile.
 
