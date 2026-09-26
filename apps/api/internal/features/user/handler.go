@@ -5,8 +5,8 @@ import (
 	"errors"
 	"net/http"
 
-	appLogger "github.com/example/scholarship-os/apps/api/pkg/logger"
-	"github.com/example/scholarship-os/apps/api/pkg/response"
+	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
+	"github.com/byte/scholarship-os/apps/api/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"

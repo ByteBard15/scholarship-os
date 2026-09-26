@@ -1,4 +1,4 @@
-module github.com/example/scholarship-os/apps/api
+module github.com/byte/scholarship-os/apps/api
 
 go 1.23.0
 

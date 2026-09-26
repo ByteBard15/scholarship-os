@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/application"
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
 )
 
 func researchTaskResponse(item *ResearchTask) ResearchTaskResponse {

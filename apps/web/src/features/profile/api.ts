@@ -6,11 +6,15 @@ import type {
   EffectiveProfile,
   ImportCandidate,
   Profile,
+  ProfileEntry,
   ProfileComparison,
   ProfileDocument,
   ProfileImport,
   ProfileOverride,
   ProfileSnapshot,
+  PersonalInfo,
+  ProfileSectionInput,
+  ProfileSectionKey,
   ProfileType,
 } from "./types";
 export const profileKeys = {
@@ -28,11 +32,59 @@ export const createProfile = (
     name: string;
     profileType: ProfileType;
     parentProfileId?: string;
+    headline?: string;
+    summary?: string;
+    isDefault?: boolean;
   },
 ) =>
   requestJSON<DataEnvelope<Profile>>(`/api/v1/users/${userId}/profiles`, {
     method: "POST",
     body: JSON.stringify(input),
+  });
+export const updateProfile = (
+  id: string,
+  input: {
+    name?: string;
+    headline?: string;
+    summary?: string;
+    isDefault?: boolean;
+  },
+) =>
+  requestJSON<DataEnvelope<Profile>>(`/api/v1/profiles/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+export const putPersonalInfo = (id: string, input: PersonalInfo) =>
+  requestJSON<DataEnvelope<PersonalInfo>>(
+    `/api/v1/profiles/${id}/personal-info`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
+export const createSectionEntry = (
+  profileId: string,
+  section: ProfileSectionKey,
+  input: ProfileSectionInput,
+) =>
+  requestJSON<DataEnvelope<ProfileEntry>>(
+    `/api/v1/profiles/${profileId}/${section}`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+export const updateSectionEntry = (
+  profileId: string,
+  section: ProfileSectionKey,
+  entryId: string,
+  input: ProfileSectionInput,
+) =>
+  requestJSON<DataEnvelope<ProfileEntry>>(
+    `/api/v1/profiles/${profileId}/${section}/${entryId}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+  );
+export const deleteSectionEntry = (
+  profileId: string,
+  section: ProfileSectionKey,
+  entryId: string,
+) =>
+  requestJSON<void>(`/api/v1/profiles/${profileId}/${section}/${entryId}`, {
+    method: "DELETE",
   });
 export const getCompleteness = (id: string) =>
   getJSON<DataEnvelope<Completeness>>(`/api/v1/profiles/${id}/completeness`);

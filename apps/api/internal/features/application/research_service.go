@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
-	appLogger "github.com/example/scholarship-os/apps/api/pkg/logger"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
 	"github.com/google/uuid"
 )
 

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+DIR="$REPO_ROOT/db/migrations"
+
+usage() {
+  echo "Usage: $0 -n <name> [-d <migration-dir>]"
+  exit "${1:-1}"
+}
+
+while getopts "n:d:h" opt; do
+  case $opt in
+    n) NAME="$OPTARG" ;;
+    d) DIR="$OPTARG" ;;
+    h) usage 0 ;;
+    *) usage ;;
+  esac
+done
+
+if [[ -z "${NAME:-}" ]]; then
+  echo "Migration name required!"
+  usage
+fi
+
+mkdir -p "$DIR"
+
+migrate create -ext sql -dir "$DIR" "$NAME"
+
+echo "✅ Created migration files in $DIR:"

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/user"
-	principal "github.com/example/scholarship-os/apps/api/pkg/auth"
-	"github.com/example/scholarship-os/apps/api/pkg/filestore"
+	"github.com/byte/scholarship-os/apps/api/internal/features/user"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
+	"github.com/byte/scholarship-os/apps/api/pkg/filestore"
 	"github.com/google/uuid"
 )
 

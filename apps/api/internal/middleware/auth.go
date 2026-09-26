@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	featureauth "github.com/example/scholarship-os/apps/api/internal/features/auth"
-	principal "github.com/example/scholarship-os/apps/api/pkg/auth"
-	"github.com/example/scholarship-os/apps/api/pkg/response"
+	featureauth "github.com/byte/scholarship-os/apps/api/internal/features/auth"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
+	"github.com/byte/scholarship-os/apps/api/pkg/response"
 )
 
 type TokenAuthenticator interface {

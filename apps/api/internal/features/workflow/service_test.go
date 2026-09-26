@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/application"
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
-	"github.com/example/scholarship-os/apps/api/internal/features/user"
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/google/uuid"
 )
 

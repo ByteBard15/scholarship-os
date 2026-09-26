@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/user"
+	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

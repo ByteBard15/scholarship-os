@@ -3,8 +3,8 @@ package workflow
 import (
 	"context"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/application"
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	"github.com/google/uuid"
 )
 

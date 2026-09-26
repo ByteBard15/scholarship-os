@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/user"
+	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/google/uuid"
 )
 

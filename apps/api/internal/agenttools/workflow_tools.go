@@ -3,7 +3,7 @@ package agenttools
 import (
 	"context"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/workflow"
+	"github.com/byte/scholarship-os/apps/api/internal/features/workflow"
 	"github.com/google/uuid"
 )
 

@@ -11,15 +11,91 @@ export type Profile = {
   createdAt: string;
   updatedAt: string;
 };
-export type ProfileEntry = Record<string, unknown> & {
+export type ProfileSectionKey =
+  | "education"
+  | "employment"
+  | "projects"
+  | "publications"
+  | "articles"
+  | "skills"
+  | "research-interests"
+  | "career-goals"
+  | "certifications"
+  | "awards"
+  | "volunteering";
+export type ProfileEntry = {
   id: string;
   profileId: string;
   inherited?: boolean;
   inheritedFromProfileId?: string;
   modifiedInProfileId?: string;
+  institution?: string;
+  degree?: string;
+  fieldOfStudy?: string;
+  organization?: string;
+  jobTitle?: string;
+  employmentType?: string;
+  title?: string;
+  name?: string;
+  role?: string;
+  publicationType?: string;
+  publisher?: string;
+  publicationDate?: string;
+  startDate?: string;
+  endDate?: string;
+  isCurrent?: boolean;
+  grade?: string;
+  gradeScale?: string;
+  classification?: string;
+  city?: string;
+  country?: string;
+  description?: string;
+  url?: string;
+  repositoryUrl?: string;
+  doi?: string;
+  category?: string;
+  proficiency?: string;
+  yearsExperience?: number;
+  priority?: number;
+  goalType?: string;
+  issuer?: string;
+  issueDate?: string;
+  expirationDate?: string;
+  credentialId?: string;
+  awardDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
+export type PersonalInfo = {
+  id?: string;
+  profileId?: string;
+  inherited?: boolean;
+  inheritedFromProfileId?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  preferredName?: string;
+  phone?: string;
+  city?: string;
+  stateOrRegion?: string;
+  country?: string;
+  nationality?: string;
+  linkedInUrl?: string;
+  githubUrl?: string;
+  websiteUrl?: string;
+};
+export type ProfileSectionInput = Omit<
+  ProfileEntry,
+  | "id"
+  | "profileId"
+  | "inherited"
+  | "inheritedFromProfileId"
+  | "modifiedInProfileId"
+  | "createdAt"
+  | "updatedAt"
+>;
 export type ProfileFull = Profile & {
-  personalInfo: ProfileEntry | null;
+  personalInfo: PersonalInfo | null;
   education: ProfileEntry[];
   employment: ProfileEntry[];
   projects: ProfileEntry[];

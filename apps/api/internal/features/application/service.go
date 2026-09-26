@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/catalog"
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
-	principal "github.com/example/scholarship-os/apps/api/pkg/auth"
+	"github.com/byte/scholarship-os/apps/api/internal/features/catalog"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	"github.com/google/uuid"
 )
 

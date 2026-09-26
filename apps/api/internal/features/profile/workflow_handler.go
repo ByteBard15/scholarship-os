@@ -3,7 +3,7 @@ package profile
 import (
 	"net/http"
 
-	"github.com/example/scholarship-os/apps/api/pkg/response"
+	"github.com/byte/scholarship-os/apps/api/pkg/response"
 )
 
 func (h *Handler) GetLineage(w http.ResponseWriter, r *http.Request) {

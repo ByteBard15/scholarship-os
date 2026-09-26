@@ -20,28 +20,21 @@ import {
 } from "../features/profile/queries";
 import type { ProfileEntry } from "../features/profile/types";
 import { useAuth } from "../features/auth/AuthProvider";
+import { ProfileMetadataForm } from "../features/profile/ProfileMetadataForm";
+import { PersonalInfoForm } from "../features/profile/PersonalInfoForm";
+import {
+  ProfileSectionEditor,
+  profileSections,
+} from "../features/profile/ProfileSectionEditor";
 
-const sections = [
-  { key: "education", label: "Education" },
-  { key: "employment", label: "Employment" },
-  { key: "projects", label: "Projects" },
-  { key: "publications", label: "Publications" },
-  { key: "articles", label: "Articles" },
-  { key: "skills", label: "Skills" },
-  { key: "researchInterests", label: "Research Interests" },
-  { key: "careerGoals", label: "Career Goals" },
-  { key: "certifications", label: "Certifications" },
-  { key: "awards", label: "Awards" },
-  { key: "volunteering", label: "Volunteering" },
-] as const;
-function titleOf(item: ProfileEntry) {
-  return String(
+function entryTitle(item: ProfileEntry) {
+  return (
     item.title ??
-      item.name ??
-      item.institution ??
-      item.organization ??
-      item.role ??
-      "Untitled entry",
+    item.name ??
+    item.institution ??
+    item.organization ??
+    item.role ??
+    "Untitled entry"
   );
 }
 
@@ -103,8 +96,11 @@ export function ProfileDetailPage() {
   if (query.isError)
     return <p className="text-red-700">{query.error.message}</p>;
   const profile = query.data.data;
-  const allEntries = sections.flatMap((section) =>
-    profile[section.key].map((item) => ({ ...item, entityType: section.key })),
+  const allEntries = profileSections.flatMap((section) =>
+    profile[section.responseKey].map((item) => ({
+      ...item,
+      entityType: section.endpoint,
+    })),
   );
   function submitOverride(event: FormEvent) {
     event.preventDefault();
@@ -167,8 +163,8 @@ export function ProfileDetailPage() {
       <nav className="mt-8 flex flex-wrap gap-3 text-sm">
         <a href="#overview">Overview</a>
         <a href="#personal">Personal</a>
-        {sections.map((section) => (
-          <a key={section.key} href={`#${section.key}`}>
+        {profileSections.map((section) => (
+          <a key={section.responseKey} href={`#${section.responseKey}`}>
             {section.label}
           </a>
         ))}
@@ -177,60 +173,33 @@ export function ProfileDetailPage() {
         <a href="#overrides">Overrides</a>
         <a href="#snapshots">Snapshots</a>
       </nav>
-      <div id="personal" className="mt-8 rounded-lg border bg-white p-5">
-        <h2 className="font-semibold">Personal</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          {profile.personalInfo
-            ? `${profile.personalInfo.firstName ?? ""} ${profile.personalInfo.lastName ?? ""}`
-            : "No personal information"}
-        </p>
-        {profile.personalInfo?.inherited && (
-          <p className="mt-1 text-xs text-indigo-700">
-            Inherited canonical content
-          </p>
-        )}
+      <div id="overview" className="mt-8 rounded-lg border bg-white p-5">
+        <h2 className="font-semibold">Profile details</h2>
+        <ProfileMetadataForm profile={profile} />
       </div>
-      {sections.map((section) => (
-        <div
-          id={section.key}
-          key={section.key}
-          className="mt-5 rounded-lg border bg-white p-5"
-        >
-          <h2 className="font-semibold">{section.label}</h2>
-          <div className="mt-3 grid gap-2">
-            {profile[section.key].map((item) => (
-              <div key={item.id} className="rounded border p-3">
-                <div className="flex justify-between gap-3">
-                  <span>{titleOf(item)}</span>
-                  {item.inherited && (
-                    <button
-                      className="text-xs text-red-700"
-                      onClick={() =>
-                        addOverride.mutate({
-                          entityType: section.key,
-                          entityId: item.id,
-                          fieldName: "visibility",
-                          overrideType: "hide",
-                        })
-                      }
-                    >
-                      Hide inherited item
-                    </button>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {item.inherited
-                    ? `Inherited from ${item.inheritedFromProfileId}`
-                    : "Canonical/profile-specific content"}
-                  {item.modifiedInProfileId && ` · Modified here`}
-                </p>
-              </div>
-            ))}
-            {profile[section.key].length === 0 && (
-              <p className="text-sm text-slate-500">No entries.</p>
-            )}
-          </div>
-        </div>
+      <div id="personal" className="mt-8 rounded-lg border bg-white p-5">
+        <h2 className="font-semibold">Personal information</h2>
+        <PersonalInfoForm
+          key={`${profile.id}-${profile.personalInfo?.id ?? "new"}`}
+          profileId={profile.id}
+          personalInfo={profile.personalInfo}
+        />
+      </div>
+      {profileSections.map((section) => (
+        <ProfileSectionEditor
+          key={section.responseKey}
+          profileId={profile.id}
+          definition={section}
+          entries={profile[section.responseKey]}
+          onHideInherited={(item: ProfileEntry) =>
+            addOverride.mutate({
+              entityType: section.endpoint,
+              entityId: item.id,
+              fieldName: "visibility",
+              overrideType: "hide",
+            })
+          }
+        />
       ))}
       <div id="documents" className="mt-5 rounded-lg border bg-white p-5">
         <h2 className="font-semibold">Documents</h2>
@@ -299,7 +268,7 @@ export function ProfileDetailPage() {
                 .filter((item) => item.inherited)
                 .map((item) => (
                   <option value={item.id} key={item.id}>
-                    {titleOf(item)}
+                    {entryTitle(item)}
                   </option>
                 ))}
             </select>

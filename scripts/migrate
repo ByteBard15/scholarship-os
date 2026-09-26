@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: $0 [-d <migration-dir>] [-e <env-file>] [-m up|down]"
+  exit "${1:-1}"
+}
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+DIR="$REPO_ROOT/db/migrations"
+ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
+MTD="up"
+
+while getopts "d:e:m:h" opt; do
+  case $opt in
+    d) DIR="$OPTARG" ;;
+    e) ENV_FILE="$OPTARG" ;;
+    m) MTD="$OPTARG" ;;
+    h) usage 0 ;;
+    *) usage ;;
+  esac
+done
+
+if [[ "$MTD" != "up" && "$MTD" != "down" ]]; then
+  echo "Invalid operation: $MTD (must be 'up' or 'down')"
+  exit 1
+fi
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+: "${DATABASE_HOST:?DATABASE_HOST must be set in $ENV_FILE or the environment}"
+: "${DATABASE_PORT:?DATABASE_PORT must be set in $ENV_FILE or the environment}"
+: "${DATABASE_NAME:?DATABASE_NAME must be set in $ENV_FILE or the environment}"
+: "${DATABASE_USER:?DATABASE_USER must be set in $ENV_FILE or the environment}"
+: "${DATABASE_PASSWORD:?DATABASE_PASSWORD must be set in $ENV_FILE or the environment}"
+: "${DATABASE_SSLMODE:?DATABASE_SSLMODE must be set in $ENV_FILE or the environment}"
+
+DATABASE_URL="postgres://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}?sslmode=${DATABASE_SSLMODE}"
+
+migrate -path "$DIR" -database "$DATABASE_URL" "$MTD"

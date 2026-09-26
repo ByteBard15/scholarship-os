@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/application"
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
-	"github.com/example/scholarship-os/apps/api/internal/features/user"
-	principal "github.com/example/scholarship-os/apps/api/pkg/auth"
-	appLogger "github.com/example/scholarship-os/apps/api/pkg/logger"
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	"github.com/byte/scholarship-os/apps/api/internal/features/user"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
+	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
 	"github.com/google/uuid"
 )
 

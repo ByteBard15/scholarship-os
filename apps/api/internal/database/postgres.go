@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/config"
+	"github.com/byte/scholarship-os/apps/api/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

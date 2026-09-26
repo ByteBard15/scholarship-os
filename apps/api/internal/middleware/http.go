@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	appLogger "github.com/example/scholarship-os/apps/api/pkg/logger"
+	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 

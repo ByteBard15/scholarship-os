@@ -3,7 +3,7 @@ package workflow
 import (
 	"time"
 
-	"github.com/example/scholarship-os/apps/api/internal/features/profile"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { createProfile, profileKeys } from "../features/profile/api";
 import { useCompleteness, useProfiles } from "../features/profile/queries";
 import type { Profile, ProfileType } from "../features/profile/types";
@@ -44,22 +44,33 @@ function ProfileCard({
 export function ProfilesPage() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
+  const navigate = useNavigate();
   const query = useProfiles(userId);
   const client = useQueryClient();
   const [name, setName] = useState("");
   const [type, setType] = useState<ProfileType>("master");
   const [parent, setParent] = useState("");
+  const [headline, setHeadline] = useState("");
+  const [summary, setSummary] = useState("");
+  const [isDefault, setIsDefault] = useState(false);
   const create = useMutation({
     mutationFn: () =>
       createProfile(userId, {
         name,
         profileType: type,
         parentProfileId: type === "master" ? undefined : parent,
+        headline: headline || undefined,
+        summary: summary || undefined,
+        isDefault: type === "master" && isDefault,
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setName("");
       setParent("");
+      setHeadline("");
+      setSummary("");
+      setIsDefault(false);
       void client.invalidateQueries({ queryKey: profileKeys.list(userId) });
+      navigate(`/profiles/${result.data.id}`);
     },
   });
   if (query.isPending) return <p>Loading profiles…</p>;
@@ -90,7 +101,7 @@ export function ProfilesPage() {
       </div>
       <form
         onSubmit={submit}
-        className="mt-6 grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-4"
+        className="mt-6 grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-2"
       >
         <input
           className="rounded border px-3 py-2"
@@ -127,14 +138,36 @@ export function ProfilesPage() {
             </option>
           ))}
         </select>
+        <input
+          className="rounded border px-3 py-2"
+          placeholder="Headline"
+          value={headline}
+          onChange={(event) => setHeadline(event.target.value)}
+        />
+        <textarea
+          className="min-h-24 rounded border px-3 py-2 md:col-span-2"
+          placeholder="Profile summary"
+          value={summary}
+          onChange={(event) => setSummary(event.target.value)}
+        />
+        {type === "master" && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isDefault}
+              onChange={(event) => setIsDefault(event.target.checked)}
+            />
+            Make this the default master profile
+          </label>
+        )}
         <button
           className="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50"
           disabled={create.isPending || !name || (type !== "master" && !parent)}
         >
-          Create profile
+          Create profile and add details
         </button>
         {create.isError && (
-          <p className="text-sm text-red-700 md:col-span-4">
+          <p className="text-sm text-red-700 md:col-span-2">
             {create.error.message}
           </p>
         )}

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	principal "github.com/example/scholarship-os/apps/api/pkg/auth"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	"github.com/google/uuid"
 )
 
