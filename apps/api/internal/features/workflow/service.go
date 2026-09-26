@@ -30,13 +30,12 @@ type Service struct {
 	users        user.Repository
 	applications ApplicationReader
 	profiles     ProfileReader
-	researcher   ResearchExecutor
 	prefiller    ApplicationPrefiller
 	now          func() time.Time
 }
 
-func NewService(repo Repository, users user.Repository, applications ApplicationReader, profiles ProfileReader, researcher ResearchExecutor, prefiller ApplicationPrefiller) *Service {
-	return &Service{repo: repo, users: users, applications: applications, profiles: profiles, researcher: researcher, prefiller: prefiller, now: func() time.Time { return time.Now().UTC() }}
+func NewService(repo Repository, users user.Repository, applications ApplicationReader, profiles ProfileReader, prefiller ApplicationPrefiller) *Service {
+	return &Service{repo: repo, users: users, applications: applications, profiles: profiles, prefiller: prefiller, now: func() time.Time { return time.Now().UTC() }}
 }
 
 func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearchTaskRequest, queue bool) (*ResearchTask, error) {
@@ -202,61 +201,27 @@ func (s *Service) TransitionResearchTask(ctx context.Context, id uuid.UUID, acti
 	return task, s.repo.UpdateResearchTask(ctx, task)
 }
 
-func (s *Service) StartResearchTask(ctx context.Context, id uuid.UUID) (*ResearchTask, error) {
-	task, err := s.repo.GetResearchTask(ctx, id)
+func (s *Service) StartResearchTask(ctx context.Context, id uuid.UUID) (*ResearchTask, *application.ResearchRun, error) {
+	if _, err := s.GetResearchTask(ctx, id); err != nil {
+		return nil, nil, err
+	}
+	task, run, err := s.repo.ClaimResearchTask(ctx, id, s.now())
 	if err != nil {
+		return nil, nil, err
+	}
+	appLogger.Info(ctx, "research task claimed", "research_task_id", task.ID, "run_id", run.ID)
+	return task, run, nil
+}
+
+func (s *Service) CompleteResearchTask(ctx context.Context, taskID, runID uuid.UUID) (*ResearchTask, error) {
+	if _, err := s.GetResearchTask(ctx, taskID); err != nil {
 		return nil, err
 	}
-	if task.Status != "queued" && task.Status != "ready" && task.Status != "draft" {
-		return nil, ErrInvalidResearchTaskState
+	task, err := s.repo.CompleteResearchTask(ctx, taskID, runID, s.now())
+	if err == nil {
+		appLogger.Info(ctx, "research task submitted for review", "research_task_id", taskID, "run_id", runID)
 	}
-	now := s.now()
-	task.Status, task.StartedAt, task.CompletedAt, task.FailedAt, task.FailureReason = "running", &now, nil, nil, nil
-	if err = s.repo.UpdateResearchTask(ctx, task); err != nil {
-		return nil, err
-	}
-	links, err := s.repo.ListTaskLinks(ctx, task.ID)
-	if err != nil {
-		return nil, err
-	}
-	input := ResearchTaskInput{Task: researchTaskResponse(task), Links: taskLinkResponses(links)}
-	if task.TargetApplicationID != nil {
-		app, appErr := s.applications.Get(ctx, *task.TargetApplicationID)
-		if appErr != nil {
-			return nil, appErr
-		}
-		response := applicationResponse(app)
-		input.TargetApplication = &response
-		effective, profileErr := s.profiles.ResolveEffectiveProfile(ctx, app.ApplicantProfileID)
-		if profileErr == nil {
-			input.EffectiveProfile = effective
-		}
-	}
-	provider, model := s.researcher.ProviderName(), s.researcher.ModelName()
-	run := &application.ResearchRun{Base: application.Base{ID: uuid.New()}, ResearchTaskID: &task.ID, ApplicationID: task.TargetApplicationID, Status: "running", Trigger: "agent", ResearchType: task.TaskType, ModelProvider: &provider, ModelName: &model, StartedAt: &now}
-	result, executeErr := s.researcher.Execute(ctx, input)
-	if executeErr != nil {
-		task.Status, task.FailedAt = "failed", &now
-		message := executeErr.Error()
-		task.FailureReason = &message
-		_ = s.repo.FailResearchTask(ctx, task, run, executeErr)
-		return nil, executeErr
-	}
-	persistence, err := s.buildResearchPersistence(task, run, result)
-	if err != nil {
-		return nil, err
-	}
-	run.Status = "review_required"
-	task.Status = "review_required"
-	if len(persistence.Proposals) == 0 && len(persistence.Findings) == 0 {
-		task.Status, task.CompletedAt = "completed", &now
-		run.Status, run.CompletedAt = "complete", &now
-	}
-	if err = s.repo.PersistResearchTaskResult(ctx, task, persistence); err != nil {
-		return nil, err
-	}
-	appLogger.Info(ctx, "research task completed", "research_task_id", task.ID, "run_id", run.ID, "proposals", len(persistence.Proposals), "findings", len(persistence.Findings))
-	return task, nil
+	return task, err
 }
 
 func (s *Service) buildResearchPersistence(task *ResearchTask, run *application.ResearchRun, result *ResearchTaskResult) (ResearchPersistence, error) {
@@ -483,7 +448,6 @@ func (s *Service) CreateAgentApplicationProposal(ctx context.Context, taskID uui
 	}
 	output := &ResearchTaskOutput{ID: uuid.New(), ResearchTaskID: task.ID, OutputType: "application_proposal", EntityID: value.ID}
 	activity := &AgentActivity{ID: uuid.New(), ResearchTaskID: &task.ID, ActivityType: "proposal_created", Summary: "Authenticated research agent created an application proposal for human review."}
-	task.Status, task.CompletedAt = "review_required", nil
 	if err := s.repo.CreateAgentProposal(ctx, task, value, links, output, activity); err != nil {
 		return nil, err
 	}

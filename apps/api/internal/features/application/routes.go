@@ -47,7 +47,6 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.Application("delete application task")).Delete("/applications/{applicationID}/tasks/{taskID}", h.DeleteTask)
 	r.With(owners.Application("complete application task")).Post("/applications/{applicationID}/tasks/{taskID}/complete", h.CompleteTask)
 	r.With(owners.Application("reopen application task")).Post("/applications/{applicationID}/tasks/{taskID}/reopen", h.ReopenTask)
-	r.With(owners.Application("run application research")).Post("/applications/{applicationID}/research", h.RunResearch)
 	r.With(owners.Application("list application research")).Get("/applications/{applicationID}/research", h.ListResearch)
 	r.With(owners.Application("mark application research stale")).Post("/applications/{applicationID}/research/mark-stale", h.MarkResearchStale)
 	r.With(owners.Application("get application research run")).Get("/applications/{applicationID}/research/{runID}", h.GetResearch)

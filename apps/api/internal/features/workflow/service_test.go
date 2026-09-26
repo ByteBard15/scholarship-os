@@ -50,6 +50,24 @@ func (f *fakeRepository) UpdateResearchTask(_ context.Context, task *ResearchTas
 	f.tasks[task.ID] = task
 	return nil
 }
+func (f *fakeRepository) ClaimResearchTask(_ context.Context, id uuid.UUID, now time.Time) (*ResearchTask, *application.ResearchRun, error) {
+	task, err := f.GetResearchTask(context.Background(), id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if task.Status != "queued" {
+		return nil, nil, ErrInvalidResearchTaskState
+	}
+	task.Status, task.StartedAt = "running", &now
+	run := &application.ResearchRun{ResearchTaskID: &task.ID, Status: "running", Trigger: "agent", ResearchType: task.TaskType, StartedAt: &now}
+	run.ID = uuid.New()
+	return task, run, nil
+}
+func (f *fakeRepository) CompleteResearchTask(_ context.Context, taskID, _ uuid.UUID, _ time.Time) (*ResearchTask, error) {
+	task := f.tasks[taskID]
+	task.Status = "review_required"
+	return task, nil
+}
 func (f *fakeRepository) ListTaskLinks(_ context.Context, id uuid.UUID) ([]ResearchTaskLink, error) {
 	return f.links[id], nil
 }
@@ -172,7 +190,7 @@ func (f *fakeProfiles) ResolveEffectiveProfile(context.Context, uuid.UUID) (*pro
 }
 
 func newTestService(repo *fakeRepository, userID uuid.UUID, apps *fakeApplications, profiles *fakeProfiles) *Service {
-	return NewService(repo, &fakeUsers{id: userID}, apps, profiles, NewMockWebResearchProvider(), NewMockApplicationPrefiller())
+	return NewService(repo, &fakeUsers{id: userID}, apps, profiles, NewMockApplicationPrefiller())
 }
 
 func TestResearchTaskLifecycleCreatesProposalWithoutApplication(t *testing.T) {
@@ -186,17 +204,18 @@ func TestResearchTaskLifecycleCreatesProposalWithoutApplication(t *testing.T) {
 	if task.Status != "queued" {
 		t.Fatalf("status = %s", task.Status)
 	}
-	if _, err = service.StartResearchTask(ctx, task.ID); err != nil {
+	_, run, err := service.StartResearchTask(ctx, task.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Status != "running" || run.Status != "running" {
+		t.Fatalf("status after research = %s", task.Status)
+	}
+	if _, err = service.CompleteResearchTask(ctx, task.ID, run.ID); err != nil {
 		t.Fatal(err)
 	}
 	if task.Status != "review_required" {
-		t.Fatalf("status after research = %s", task.Status)
-	}
-	if repo.persistence == nil || len(repo.persistence.Proposals) != 1 || len(repo.persistence.Sources) == 0 || len(repo.persistence.Findings) == 0 {
-		t.Fatal("typed research result was not persisted")
-	}
-	if repo.persistence.Run.ApplicationID != nil {
-		t.Fatal("task-only research unexpectedly created or linked an application")
+		t.Fatalf("status after completion = %s", task.Status)
 	}
 }
 

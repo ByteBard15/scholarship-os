@@ -47,7 +47,78 @@ func (r *GORMRepository) ListResearchTasks(ctx context.Context, filters Research
 	if filters.Priority != nil {
 		query = query.Where("priority = ?", *filters.Priority)
 	}
-	err = query.Order("created_at DESC").Find(&items).Error
+	order := "created_at DESC"
+	if filters.OldestFirst {
+		order = "created_at ASC"
+	}
+	query = query.Order(order)
+	if filters.Limit > 0 {
+		query = query.Limit(filters.Limit)
+	}
+	err = query.Find(&items).Error
+	return
+}
+
+func (r *GORMRepository) ClaimResearchTask(ctx context.Context, id uuid.UUID, now time.Time) (task *ResearchTask, run *application.ResearchRun, err error) {
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		task = &ResearchTask{}
+		if queryErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(task, "id = ?", id).Error; queryErr != nil {
+			if errors.Is(queryErr, gorm.ErrRecordNotFound) {
+				return ErrResearchTaskNotFound
+			}
+			return queryErr
+		}
+		if task.Status != "queued" {
+			return ErrInvalidResearchTaskState
+		}
+		task.Status, task.StartedAt, task.CompletedAt, task.FailedAt, task.FailureReason = "running", &now, nil, nil, nil
+		run = &application.ResearchRun{Base: application.Base{ID: uuid.New()}, ResearchTaskID: &task.ID, ApplicationID: task.TargetApplicationID, Status: "running", Trigger: "agent", ResearchType: task.TaskType, StartedAt: &now}
+		if createErr := tx.Create(run).Error; createErr != nil {
+			return createErr
+		}
+		output := ResearchTaskOutput{ID: uuid.New(), ResearchTaskID: task.ID, OutputType: "research_run", EntityID: run.ID}
+		if createErr := tx.Create(&output).Error; createErr != nil {
+			return createErr
+		}
+		activity := AgentActivity{ID: uuid.New(), ResearchTaskID: &task.ID, ApplicationID: task.TargetApplicationID, ActivityType: "research_started", Summary: "Authenticated research agent claimed the queued task."}
+		if createErr := tx.Create(&activity).Error; createErr != nil {
+			return createErr
+		}
+		return tx.Save(task).Error
+	})
+	return
+}
+
+func (r *GORMRepository) CompleteResearchTask(ctx context.Context, taskID, runID uuid.UUID, now time.Time) (task *ResearchTask, err error) {
+	err = r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		task = &ResearchTask{}
+		if queryErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(task, "id = ?", taskID).Error; queryErr != nil {
+			if errors.Is(queryErr, gorm.ErrRecordNotFound) {
+				return ErrResearchTaskNotFound
+			}
+			return queryErr
+		}
+		var run application.ResearchRun
+		if queryErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("research_task_id = ?", taskID).First(&run, "id = ?", runID).Error; queryErr != nil {
+			if errors.Is(queryErr, gorm.ErrRecordNotFound) {
+				return application.ErrResearchRunNotFound
+			}
+			return queryErr
+		}
+		if task.Status != "running" || run.Status != "running" {
+			return ErrInvalidResearchTaskState
+		}
+		run.Status, run.CompletedAt = "review_required", &now
+		task.Status, task.CompletedAt = "review_required", nil
+		if saveErr := tx.Save(&run).Error; saveErr != nil {
+			return saveErr
+		}
+		activity := AgentActivity{ID: uuid.New(), ResearchTaskID: &task.ID, ApplicationID: task.TargetApplicationID, PrefillRunID: nil, ActivityType: "research_completed", Summary: "Authenticated research agent finished submitting results; human review is required."}
+		if createErr := tx.Create(&activity).Error; createErr != nil {
+			return createErr
+		}
+		return tx.Save(task).Error
+	})
 	return
 }
 

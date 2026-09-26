@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/url"
 	"strings"
@@ -17,63 +16,12 @@ import (
 type ResearchService struct {
 	repo         ResearchRepository
 	applications *Service
-	researcher   ApplicationResearcher
 	log          *slog.Logger
 	now          func() time.Time
 }
 
-func NewResearchService(r ResearchRepository, a *Service, p ApplicationResearcher, l *slog.Logger) *ResearchService {
-	return &ResearchService{r, a, p, l, func() time.Time { return time.Now().UTC() }}
-}
-func (s *ResearchService) Run(ctx context.Context, applicationID uuid.UUID, q ResearchRunRequest) (*ResearchRun, error) {
-	app, e := s.applications.repo.Get(ctx, applicationID)
-	if e != nil {
-		return nil, e
-	}
-	if q.Trigger == "" {
-		q.Trigger = "manual"
-	}
-	if q.ResearchType == "" {
-		q.ResearchType = "full"
-	}
-	now := s.now()
-	provider, model := s.researcher.ProviderName(), s.researcher.ModelName()
-	prompt := "phase3-v1"
-	run := &ResearchRun{ApplicationID: &applicationID, Status: "running", Trigger: q.Trigger, ResearchType: q.ResearchType, ModelProvider: &provider, ModelName: &model, PromptVersion: &prompt, StartedAt: &now}
-	if app.Status == StatusDiscovered {
-		app.Status = StatusResearching
-	}
-	app.ResearchStatus = ResearchRunning
-	if e = s.repo.CreateRun(ctx, run, app); e != nil {
-		return nil, e
-	}
-	appLogger.FromContext(ctx, s.log).InfoContext(ctx, "research started", "application_id", applicationID, "run_id", run.ID, "provider", provider)
-	effective, e := s.applications.profiles.ResolveEffectiveProfile(ctx, app.ApplicantProfileID)
-	if e != nil {
-		_ = s.repo.FailRun(ctx, run, app, e)
-		return nil, e
-	}
-	summary := fmt.Sprintf("profile %s with %d education, %d employment, and %d skill entries", effective.Name, len(effective.Education), len(effective.Employment), len(effective.Skills))
-	result, e := s.researcher.Research(ctx, ResearchInput{Application: toApplication(app), EffectiveProfileSummary: summary})
-	if e != nil {
-		_ = s.repo.FailRun(ctx, run, app, e)
-		appLogger.FromContext(ctx, s.log).ErrorContext(ctx, "research failed", "application_id", applicationID, "run_id", run.ID, "error", e)
-		return nil, e
-	}
-	sources, findings, e := buildResearchRecords(run, app, result)
-	if e != nil {
-		_ = s.repo.FailRun(ctx, run, app, e)
-		return nil, e
-	}
-	completed := s.now()
-	run.Status = "review_required"
-	run.CompletedAt = &completed
-	app.ResearchStatus = ResearchReviewRequired
-	if e = s.repo.PersistResult(ctx, run, app, sources, findings); e != nil {
-		return nil, e
-	}
-	appLogger.FromContext(ctx, s.log).InfoContext(ctx, "research completed", "application_id", applicationID, "run_id", run.ID, "sources", len(sources), "findings", len(findings))
-	return run, nil
+func NewResearchService(r ResearchRepository, a *Service, l *slog.Logger) *ResearchService {
+	return &ResearchService{r, a, l, func() time.Time { return time.Now().UTC() }}
 }
 
 func buildResearchRecords(run *ResearchRun, app *Application, result *ResearchResult) ([]ResearchSource, []ResearchFinding, error) {

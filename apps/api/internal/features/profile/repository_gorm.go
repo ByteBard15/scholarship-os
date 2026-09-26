@@ -23,6 +23,35 @@ func (r *GORMRepository) Create(ctx context.Context, p *ApplicantProfile) error 
 		return tx.Create(p).Error
 	})
 }
+func (r *GORMRepository) CreateBundle(ctx context.Context, p *ApplicantProfile, personal *ProfilePersonalInfo, sections []any, audit *AuditLog) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if p.IsDefault {
+			if err := tx.Model(&ApplicantProfile{}).Where("user_id = ? AND is_default = ?", p.UserID, true).Update("is_default", false).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Create(p).Error; err != nil {
+			return err
+		}
+		if personal != nil {
+			personal.ProfileID = p.ID
+			if err := tx.Create(personal).Error; err != nil {
+				return err
+			}
+		}
+		for _, section := range sections {
+			if err := create(ctx, tx, section); err != nil {
+				return err
+			}
+		}
+		if audit != nil {
+			if err := tx.Create(audit).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
 func (r *GORMRepository) GetByID(ctx context.Context, id uuid.UUID) (*ApplicantProfile, error) {
 	var p ApplicantProfile
 	err := r.db.WithContext(ctx).First(&p, "id = ?", id).Error

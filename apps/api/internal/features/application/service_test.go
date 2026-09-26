@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -227,44 +226,6 @@ func (f *fakeResearchRepo) UpdateFinding(_ context.Context, v *ResearchFinding) 
 func (f *fakeResearchRepo) ApplyFindings(_ context.Context, _ *ResearchRun, _ *Application, b AppliedResearch, _ *profile.AuditLog) error {
 	f.applied = b
 	return nil
-}
-
-func TestMockResearchReviewAndApplyFlow(t *testing.T) {
-	app := &Application{UserID: uuid.New(), ApplicantProfileID: uuid.New(), Name: "Example", Status: StatusDiscovered, ResearchStatus: ResearchNotStarted}
-	app.ID = uuid.New()
-	appRepo := &fakeApplicationRepo{app: app}
-	effective := &profile.EffectiveProfileResponse{FullProfileResponse: profile.FullProfileResponse{ProfileResponse: profile.ProfileResponse{Name: "Base"}}}
-	apps := NewService(appRepo, fakeProfiles{effective: effective}, nil)
-	researchRepo := &fakeResearchRepo{}
-	svc := NewResearchService(researchRepo, apps, NewMockApplicationResearcher(), slog.Default())
-	run, e := svc.Run(context.Background(), app.ID, ResearchRunRequest{})
-	if e != nil {
-		t.Fatal(e)
-	}
-	if len(researchRepo.sources) != 1 || len(researchRepo.findings) != 3 {
-		t.Fatalf("saved %d sources and %d findings", len(researchRepo.sources), len(researchRepo.findings))
-	}
-	if app.ResearchStatus != ResearchReviewRequired {
-		t.Fatalf("research status = %s", app.ResearchStatus)
-	}
-	for i := range researchRepo.findings {
-		status := "rejected"
-		if researchRepo.findings[i].Category == "deadline" {
-			status = "accepted"
-		}
-		if _, e = svc.ReviewFinding(context.Background(), app.ID, run.ID, researchRepo.findings[i].ID, status); e != nil {
-			t.Fatal(e)
-		}
-	}
-	if e = svc.Apply(context.Background(), app.ID, run.ID); e != nil {
-		t.Fatal(e)
-	}
-	if len(researchRepo.applied.Deadlines) != 1 || len(researchRepo.applied.Requirements) != 0 || len(researchRepo.applied.Funding) != 0 {
-		t.Fatalf("unexpected applied batch: %+v", researchRepo.applied)
-	}
-	if researchRepo.applied.Deadlines[0].SourceID == nil {
-		t.Fatal("applied deadline lost provenance")
-	}
 }
 
 func TestConflictingFindingsAreRetained(t *testing.T) {

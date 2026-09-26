@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scholarship-os.local/schemas/profile-bundle.schema.json",
+  "title": "Scholarship OS Profile Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profile"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "exportedAt": { "type": "string", "format": "date-time" },
+    "profile": { "$ref": "#/$defs/profile" }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "nullableDate": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "personalInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["firstName", "lastName"],
+      "properties": {
+        "firstName": { "type": "string", "minLength": 1 },
+        "middleName": { "$ref": "#/$defs/nullableString" },
+        "lastName": { "type": "string", "minLength": 1 },
+        "preferredName": { "$ref": "#/$defs/nullableString" },
+        "phone": { "$ref": "#/$defs/nullableString" },
+        "city": { "$ref": "#/$defs/nullableString" },
+        "stateOrRegion": { "$ref": "#/$defs/nullableString" },
+        "country": { "$ref": "#/$defs/nullableString" },
+        "nationality": { "$ref": "#/$defs/nullableString" },
+        "linkedInUrl": { "$ref": "#/$defs/nullableString" },
+        "githubUrl": { "$ref": "#/$defs/nullableString" },
+        "websiteUrl": { "$ref": "#/$defs/nullableString" }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "institution": { "$ref": "#/$defs/nullableString" },
+        "degree": { "$ref": "#/$defs/nullableString" },
+        "fieldOfStudy": { "$ref": "#/$defs/nullableString" },
+        "organization": { "$ref": "#/$defs/nullableString" },
+        "jobTitle": { "$ref": "#/$defs/nullableString" },
+        "employmentType": { "$ref": "#/$defs/nullableString" },
+        "title": { "$ref": "#/$defs/nullableString" },
+        "name": { "$ref": "#/$defs/nullableString" },
+        "role": { "$ref": "#/$defs/nullableString" },
+        "publicationType": { "$ref": "#/$defs/nullableString" },
+        "publisher": { "$ref": "#/$defs/nullableString" },
+        "publicationDate": { "$ref": "#/$defs/nullableDate" },
+        "startDate": { "$ref": "#/$defs/nullableDate" },
+        "endDate": { "$ref": "#/$defs/nullableDate" },
+        "isCurrent": { "type": ["boolean", "null"] },
+        "grade": { "$ref": "#/$defs/nullableString" },
+        "gradeScale": { "$ref": "#/$defs/nullableString" },
+        "classification": { "$ref": "#/$defs/nullableString" },
+        "city": { "$ref": "#/$defs/nullableString" },
+        "country": { "$ref": "#/$defs/nullableString" },
+        "description": { "$ref": "#/$defs/nullableString" },
+        "url": { "$ref": "#/$defs/nullableString" },
+        "repositoryUrl": { "$ref": "#/$defs/nullableString" },
+        "doi": { "$ref": "#/$defs/nullableString" },
+        "category": { "$ref": "#/$defs/nullableString" },
+        "proficiency": { "$ref": "#/$defs/nullableString" },
+        "yearsExperience": { "type": ["number", "null"], "minimum": 0 },
+        "priority": { "type": ["integer", "null"], "minimum": 0 },
+        "goalType": { "$ref": "#/$defs/nullableString" },
+        "issuer": { "$ref": "#/$defs/nullableString" },
+        "issueDate": { "$ref": "#/$defs/nullableDate" },
+        "expirationDate": { "$ref": "#/$defs/nullableDate" },
+        "credentialId": { "$ref": "#/$defs/nullableString" },
+        "awardDate": { "$ref": "#/$defs/nullableDate" }
+      }
+    },
+    "sectionList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "profileType"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "profileType": {
+          "type": "string",
+          "enum": ["master", "domain", "application"]
+        },
+        "parentProfileId": {
+          "type": ["string", "null"],
+          "format": "uuid"
+        },
+        "headline": { "$ref": "#/$defs/nullableString" },
+        "summary": { "$ref": "#/$defs/nullableString" },
+        "isDefault": { "type": "boolean", "default": false },
+        "personalInfo": { "$ref": "#/$defs/personalInfo" },
+        "education": { "$ref": "#/$defs/sectionList" },
+        "employment": { "$ref": "#/$defs/sectionList" },
+        "projects": { "$ref": "#/$defs/sectionList" },
+        "publications": { "$ref": "#/$defs/sectionList" },
+        "articles": { "$ref": "#/$defs/sectionList" },
+        "skills": { "$ref": "#/$defs/sectionList" },
+        "researchInterests": { "$ref": "#/$defs/sectionList" },
+        "careerGoals": { "$ref": "#/$defs/sectionList" },
+        "certifications": { "$ref": "#/$defs/sectionList" },
+        "awards": { "$ref": "#/$defs/sectionList" },
+        "volunteering": { "$ref": "#/$defs/sectionList" }
+      }
+    }
+  }
+}

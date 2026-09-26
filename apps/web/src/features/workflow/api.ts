@@ -48,7 +48,7 @@ export const createResearchTask = (
   );
 export const transitionResearchTask = (
   id: string,
-  action: "queue" | "start" | "cancel" | "retry",
+  action: "queue" | "cancel" | "retry",
 ) =>
   requestJSON<Envelope<ResearchTask>>(
     `/api/v1/research-tasks/${id}/${action}`,

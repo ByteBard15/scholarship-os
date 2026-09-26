@@ -47,7 +47,7 @@ Then sign in at `http://localhost:5173/login`, or call `/api/v1/auth/login` to o
 
 To issue a scoped agent credential, call the SYSTEM-only `/api/v1/admin/agent-credentials` endpoint with a user ID, name, and scopes. The returned `agt_` key is shown once and works only on dedicated `/api/v1/agent` routes for its associated user workspace.
 
-For a manual end-to-end flow, use `tmp/requests.http`: create a user and Master Profile, create and start a Research Task, review its sources/findings and Application Proposal, approve it with a parent profile, run application prefill, respond to an Information Request, and process that response. No discovered scholarship becomes an Application before explicit approval.
+For a manual end-to-end flow, use `tmp/requests.http`: create a user and Master Profile, queue a Research Task, use a scoped agent key to poll and claim it, submit sources/findings and an Application Proposal, complete it for review, approve it with a parent profile, run application prefill, respond to an Information Request, and process that response. Research is not simulated inside the API, and no discovered scholarship becomes an Application before explicit approval.
 
 ## Environment
 

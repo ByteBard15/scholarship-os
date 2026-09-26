@@ -68,8 +68,8 @@ func main() {
 	)
 	catalogService := catalog.NewService(catalogRepo)
 	applicationService := application.NewService(applicationRepo, profileService, catalogService)
-	researchService := application.NewResearchService(applicationRepo, applicationService, application.NewMockApplicationResearcher(), log)
-	workflowService := workflow.NewService(workflowRepo, userRepo, applicationService, profileService, workflow.NewMockWebResearchProvider(), workflow.NewMockApplicationPrefiller())
+	researchService := application.NewResearchService(applicationRepo, applicationService, log)
+	workflowService := workflow.NewService(workflowRepo, userRepo, applicationService, profileService, workflow.NewMockApplicationPrefiller())
 	applicationService.SetPreparationReader(workflowService)
 	handler := server.NewRouter(log, sqlDB, db, cfg.WebOrigin, authService,
 		featureauth.NewHandler(authService, validate),

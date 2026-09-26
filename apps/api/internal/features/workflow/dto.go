@@ -34,10 +34,21 @@ type UpdateResearchTaskRequest struct {
 }
 
 type ResearchTaskFilters struct {
-	UserID   *uuid.UUID
-	Status   *string
-	TaskType *string
-	Priority *string
+	UserID      *uuid.UUID
+	Status      *string
+	TaskType    *string
+	Priority    *string
+	Limit       int
+	OldestFirst bool
+}
+
+type CompleteAgentResearchRequest struct {
+	ResearchRunID uuid.UUID `json:"researchRunId" validate:"required"`
+}
+
+type ClaimedResearchTaskResponse struct {
+	Task        ResearchTaskResponse `json:"task"`
+	ResearchRun ResearchRunDTO       `json:"researchRun"`
 }
 
 type TaskLinkRequest struct {

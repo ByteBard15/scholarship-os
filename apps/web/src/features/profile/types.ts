@@ -94,6 +94,30 @@ export type ProfileSectionInput = Omit<
   | "createdAt"
   | "updatedAt"
 >;
+export type ProfileBundle = {
+  schemaVersion: "1.0";
+  exportedAt?: string;
+  profile: {
+    name: string;
+    profileType: ProfileType;
+    parentProfileId?: string;
+    headline?: string;
+    summary?: string;
+    isDefault: boolean;
+    personalInfo?: PersonalInfo;
+    education: ProfileSectionInput[];
+    employment: ProfileSectionInput[];
+    projects: ProfileSectionInput[];
+    publications: ProfileSectionInput[];
+    articles: ProfileSectionInput[];
+    skills: ProfileSectionInput[];
+    researchInterests: ProfileSectionInput[];
+    careerGoals: ProfileSectionInput[];
+    certifications: ProfileSectionInput[];
+    awards: ProfileSectionInput[];
+    volunteering: ProfileSectionInput[];
+  };
+};
 export type ProfileFull = Profile & {
   personalInfo: PersonalInfo | null;
   education: ProfileEntry[];

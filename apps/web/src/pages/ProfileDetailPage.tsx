@@ -6,6 +6,7 @@ import {
   createOverride,
   createSnapshot,
   deleteOverride,
+  exportProfileBundle,
   profileKeys,
   uploadDocument,
 } from "../features/profile/api";
@@ -73,6 +74,20 @@ export function ProfileDetailPage() {
     onSuccess: () => {
       setReason("");
       void refresh();
+    },
+  });
+  const exportBundle = useMutation({
+    mutationFn: () => exportProfileBundle(id),
+    onSuccess: ({ data }) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${data.profile.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "profile"}.profile.json`;
+      link.click();
+      URL.revokeObjectURL(url);
     },
   });
   const removeOverride = useMutation({
@@ -151,6 +166,13 @@ export function ProfileDetailPage() {
                 Compare
               </Link>
             )}
+            <button
+              className="rounded border px-3 py-1 text-sm"
+              disabled={exportBundle.isPending}
+              onClick={() => exportBundle.mutate()}
+            >
+              {exportBundle.isPending ? "Exporting…" : "Export JSON"}
+            </button>
           </div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">

@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/application"
@@ -53,53 +52,6 @@ type ResearchExecutor interface {
 	Execute(context.Context, ResearchTaskInput) (*ResearchTaskResult, error)
 	ProviderName() string
 	ModelName() string
-}
-
-type MockWebResearchProvider struct{ now func() time.Time }
-
-func NewMockWebResearchProvider() *MockWebResearchProvider {
-	return &MockWebResearchProvider{now: func() time.Time { return time.Now().UTC() }}
-}
-
-func (*MockWebResearchProvider) ProviderName() string { return "mock" }
-func (*MockWebResearchProvider) ModelName() string    { return "deterministic-research-v1" }
-
-func (m *MockWebResearchProvider) Execute(_ context.Context, input ResearchTaskInput) (*ResearchTaskResult, error) {
-	title := "Example Graduate Scholarship official page"
-	publisher := "Example University"
-	country := "Exampleland"
-	degree := "masters"
-	scholarshipType := "full"
-	officialURL := "https://example.test/scholarships/graduate-2027"
-	programmeURL := "https://example.test/programmes/biomedical-engineering"
-	confidence := 0.96
-	intake := "Autumn 2027"
-	intakeYear := 2027
-	summary := "A fictional fully funded graduate opportunity returned by the deterministic local research provider."
-	reasoning := "The proposal is supported by the linked official scholarship and programme pages."
-	deadline := time.Date(2027, time.January, 31, 23, 59, 0, 0, time.UTC)
-	rawDeadline := "Applications close 31 January 2027"
-	mandatory := true
-	hard := true
-	questionnaireType := "scholarship"
-	link := officialURL
-	if len(input.Links) > 0 {
-		link = input.Links[0].URL
-	}
-	proposalName := strings.TrimSpace(input.Task.Title)
-	if proposalName == "" {
-		proposalName = "Example Graduate Scholarship 2027"
-	}
-	return &ResearchTaskResult{
-		Sources:              []application.ResearchSourceCandidate{{Key: "official-scholarship", URL: link, Title: &title, Publisher: &publisher, SourceType: "scholarship_provider", IsOfficial: true, RetrievedAt: m.now()}},
-		Findings:             []application.FindingCandidate{{SourceKey: "official-scholarship", Category: "identity", Field: "scholarship", Value: map[string]any{"name": "Example Graduate Scholarship", "country": country}, Confidence: &confidence, VerificationStatus: "verified"}},
-		ApplicationProposals: []ApplicationProposalCandidate{{StableKey: "example-graduate-scholarship-2027", ProposedInstitution: &ProposedInstitution{Name: "Example University", InstitutionType: stringPointer("university"), Country: country, WebsiteURL: stringPointer("https://example.test/university")}, ProposedProgramme: &ProposedProgramme{Name: "MSc Biomedical Engineering", DegreeLevel: &degree, FieldOfStudy: stringPointer("Biomedical Engineering"), ProgrammeURL: &programmeURL}, ProposedScholarship: &ProposedScholarship{Name: "Example Graduate Scholarship", ProviderName: &publisher, Country: &country, DegreeLevel: &degree, ScholarshipType: &scholarshipType, OfficialURL: &officialURL}, Name: proposalName, Country: &country, Intake: &intake, IntakeYear: &intakeYear, Summary: &summary, Confidence: &confidence, ReasoningSummary: &reasoning, SourceKeys: []string{"official-scholarship"}}},
-		Requirements:         []application.RequirementCandidate{{SourceKey: "official-scholarship", Data: application.RequirementRequest{Category: "transcript", Title: "Academic transcript", IsMandatory: &mandatory, SourceURL: &link}, Confidence: &confidence, VerificationStatus: "supported"}},
-		Deadlines:            []application.DeadlineCandidate{{SourceKey: "official-scholarship", Data: application.DeadlineRequest{DeadlineType: "scholarship", Title: "Scholarship application deadline", DeadlineAt: &deadline, Timezone: stringPointer("UTC"), DatePrecision: "exact", RawDeadlineText: &rawDeadline, IsHardDeadline: &hard, SourceURL: &link, VerifiedAt: timePointer(m.now())}, Confidence: &confidence, RawText: &rawDeadline, VerificationStatus: "verified"}},
-		Funding:              []application.FundingCandidate{{SourceKey: "official-scholarship", Data: application.FundingRequest{FundingType: "full", TuitionCoverage: stringPointer("Full tuition"), StipendPeriod: stringPointer("monthly"), SourceURL: &link}, Confidence: &confidence, VerificationStatus: "supported"}},
-		URLs:                 []application.URLCandidate{{SourceKey: "official-scholarship", Data: application.URLRequest{URLType: "scholarship", Label: stringPointer("Official scholarship page"), URL: link, IsOfficial: true}, Confidence: &confidence, VerificationStatus: "verified"}},
-		Questionnaires:       []QuestionnaireCandidate{{StableKey: "initial-scholarship-questionnaire", Title: "Initial scholarship questionnaire", QuestionnaireType: &questionnaireType, SourceURL: &link, Questions: []QuestionRequest{{Key: stringPointer("undergraduate_institution"), Prompt: "What is your undergraduate institution?", QuestionType: "short_text", IsRequired: true, SortOrder: intPointer(1)}, {Key: stringPointer("passport_expiry"), Prompt: "What is your passport expiry date?", QuestionType: "date", IsRequired: true, SortOrder: intPointer(2)}, {Key: stringPointer("programme_motivation"), Prompt: "Why are you interested in this programme?", QuestionType: "long_text", IsRequired: true, SortOrder: intPointer(3)}}}},
-	}, nil
 }
 
 type PrefillInput struct {

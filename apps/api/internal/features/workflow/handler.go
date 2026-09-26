@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/application"
@@ -163,6 +164,25 @@ func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
 	result := researchTaskResponses(items)
 	response.Collection(w, result, len(result))
 }
+func (h *Handler) PollResearchTasks(w http.ResponseWriter, r *http.Request) {
+	limit := 10
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 50 {
+			response.Error(w, http.StatusBadRequest, "INVALID_LIMIT", "limit must be between 1 and 50")
+			return
+		}
+		limit = parsed
+	}
+	status := "queued"
+	items, err := h.service.ListResearchTasks(r.Context(), ResearchTaskFilters{Status: &status, Limit: limit, OldestFirst: true})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchTaskResponses(items)
+	response.Collection(w, result, len(result))
+}
 func (h *Handler) GetResearchTask(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.id(w, r, "taskID")
 	if !ok {
@@ -221,12 +241,29 @@ func (h *Handler) StartResearchTask(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	item, err := h.service.StartResearchTask(r.Context(), id)
+	item, run, err := h.service.StartResearchTask(r.Context(), id)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	response.Data(w, 200, researchTaskResponse(item))
+	runDTO := researchRunDTOs([]application.ResearchRun{*run})[0]
+	response.Data(w, 200, ClaimedResearchTaskResponse{Task: researchTaskResponse(item), ResearchRun: runDTO})
+}
+func (h *Handler) CompleteResearchTask(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	var request CompleteAgentResearchRequest
+	if !h.decode(w, r, &request) {
+		return
+	}
+	item, err := h.service.CompleteResearchTask(r.Context(), id, request.ResearchRunID)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusOK, researchTaskResponse(item))
 }
 func (h *Handler) ListTaskOutputs(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.id(w, r, "taskID")

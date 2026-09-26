@@ -760,22 +760,6 @@ func (h *Handler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	response.Data(w, 200, v)
 }
 
-func (h *Handler) RunResearch(w http.ResponseWriter, r *http.Request) {
-	a, ok := h.appID(w, r)
-	if !ok {
-		return
-	}
-	q := ResearchRunRequest{}
-	if r.ContentLength != 0 && !h.body(w, r, &q, true) {
-		return
-	}
-	v, e := h.research.Run(r.Context(), a, q)
-	if e != nil {
-		h.err(w, r, e)
-		return
-	}
-	response.Data(w, 201, toResearchRun(v))
-}
 func (h *Handler) ListResearch(w http.ResponseWriter, r *http.Request) {
 	a, ok := h.appID(w, r)
 	if !ok {

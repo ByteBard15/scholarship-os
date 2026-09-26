@@ -39,7 +39,7 @@ export function ResearchDetailPage() {
   const refresh = () =>
     client.invalidateQueries({ queryKey: workflowKeys.all });
   const transition = useMutation({
-    mutationFn: (action: "queue" | "start" | "cancel" | "retry") =>
+    mutationFn: (action: "queue" | "cancel" | "retry") =>
       transitionResearchTask(id, action),
     onSuccess: () => void refresh(),
   });
@@ -90,13 +90,10 @@ export function ResearchDetailPage() {
             Queue
           </button>
         )}
-        {["draft", "ready", "queued"].includes(item.status) && (
-          <button
-            className="rounded bg-indigo-700 px-3 py-1 text-sm text-white"
-            onClick={() => transition.mutate("start")}
-          >
-            Start Research
-          </button>
+        {item.status === "queued" && (
+          <span className="rounded bg-indigo-50 px-3 py-1 text-sm text-indigo-700">
+            Waiting for a research agent
+          </span>
         )}
         {item.status === "failed" && (
           <button

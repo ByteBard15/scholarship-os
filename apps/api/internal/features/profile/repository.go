@@ -15,6 +15,10 @@ type Repository interface {
 	UpsertPersonalInfo(context.Context, *ProfilePersonalInfo) error
 }
 
+type BundleRepository interface {
+	CreateBundle(context.Context, *ApplicantProfile, *ProfilePersonalInfo, []any, *AuditLog) error
+}
+
 type SectionRepository interface {
 	ListEducation(context.Context, uuid.UUID) ([]EducationHistory, error)
 	GetEducation(context.Context, uuid.UUID, uuid.UUID) (*EducationHistory, error)

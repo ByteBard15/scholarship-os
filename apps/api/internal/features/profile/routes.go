@@ -8,7 +8,9 @@ import (
 func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.User("list user profiles")).Get("/users/{userID}/profiles", h.List)
 	r.With(owners.User("create user profile")).Post("/users/{userID}/profiles", h.Create)
+	r.With(owners.User("import profile bundle")).Post("/users/{userID}/profiles/import", h.ImportBundle)
 	r.With(owners.Profile("get profile")).Get("/profiles/{profileID}", h.Get)
+	r.With(owners.Profile("export profile bundle")).Get("/profiles/{profileID}/export", h.ExportBundle)
 	r.With(owners.Profile("update profile")).Patch("/profiles/{profileID}", h.Update)
 	r.With(owners.Profile("get full profile")).Get("/profiles/{profileID}/full", h.GetFull)
 	r.With(owners.Profile("resolve effective profile")).Get("/profiles/{profileID}/effective", h.GetEffective)

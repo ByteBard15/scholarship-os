@@ -6,7 +6,6 @@ import {
   applyResearch,
   completeTask,
   reviewFinding,
-  runResearch,
 } from "../features/application/api";
 import {
   useApplication,
@@ -44,10 +43,6 @@ export function ApplicationDetailPage() {
   const client = useQueryClient();
   const refresh = () =>
     client.invalidateQueries({ queryKey: applicationKeys.all });
-  const research = useMutation({
-    mutationFn: () => runResearch(id),
-    onSuccess: () => void refresh(),
-  });
   const review = useMutation({
     mutationFn: ({
       finding,
@@ -287,10 +282,9 @@ export function ApplicationDetailPage() {
             runs={runs.data?.data ?? []}
             sources={sources.data?.data ?? []}
             findings={findings.data?.data ?? []}
-            onRun={() => research.mutate()}
             onReview={(finding, status) => review.mutate({ finding, status })}
             onApply={() => apply.mutate()}
-            busy={research.isPending || review.isPending || apply.isPending}
+            busy={review.isPending || apply.isPending}
           />
         )}
         {tab === "Contacts" && (
@@ -421,7 +415,6 @@ function ResearchPanel({
   runs,
   sources,
   findings,
-  onRun,
   onReview,
   onApply,
   busy,
@@ -429,7 +422,6 @@ function ResearchPanel({
   runs: import("../features/application/types").ResearchRun[];
   sources: import("../features/application/types").ResearchSource[];
   findings: import("../features/application/types").ResearchFinding[];
-  onRun: () => void;
   onReview: (id: string, status: "accepted" | "rejected") => void;
   onApply: () => void;
   busy: boolean;
@@ -446,13 +438,9 @@ function ResearchPanel({
               : "Never"}
           </p>
         </div>
-        <button
-          className="rounded bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50"
-          disabled={busy}
-          onClick={onRun}
-        >
-          Run mock research
-        </button>
+        <Link className="rounded border px-3 py-2 text-sm" to="/research">
+          Open Research Inbox
+        </Link>
       </div>
       <div className="mt-5">
         <h3 className="font-medium">Sources</h3>

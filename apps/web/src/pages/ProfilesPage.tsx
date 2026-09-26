@@ -1,9 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { createProfile, profileKeys } from "../features/profile/api";
+import {
+  createProfile,
+  importProfileBundle,
+  profileKeys,
+} from "../features/profile/api";
 import { useCompleteness, useProfiles } from "../features/profile/queries";
-import type { Profile, ProfileType } from "../features/profile/types";
+import type {
+  Profile,
+  ProfileBundle,
+  ProfileType,
+} from "../features/profile/types";
 import { useAuth } from "../features/auth/AuthProvider";
 
 function ProfileCard({
@@ -53,6 +61,9 @@ export function ProfilesPage() {
   const [headline, setHeadline] = useState("");
   const [summary, setSummary] = useState("");
   const [isDefault, setIsDefault] = useState(false);
+  const [importFile, setImportFile] = useState<File>();
+  const [importType, setImportType] = useState<ProfileType>("master");
+  const [importParent, setImportParent] = useState("");
   const create = useMutation({
     mutationFn: () =>
       createProfile(userId, {
@@ -73,6 +84,24 @@ export function ProfilesPage() {
       navigate(`/profiles/${result.data.id}`);
     },
   });
+  const importBundle = useMutation({
+    mutationFn: async () => {
+      if (!importFile) throw new Error("Choose a profile JSON file");
+      const bundle = JSON.parse(await importFile.text()) as ProfileBundle;
+      bundle.profile.profileType = importType;
+      bundle.profile.parentProfileId =
+        importType === "master" ? undefined : importParent;
+      bundle.profile.isDefault =
+        importType === "master" && bundle.profile.isDefault;
+      return importProfileBundle(userId, bundle);
+    },
+    onSuccess: (result) => {
+      setImportFile(undefined);
+      setImportParent("");
+      void client.invalidateQueries({ queryKey: profileKeys.list(userId) });
+      navigate(`/profiles/${result.data.id}`);
+    },
+  });
   if (query.isPending) return <p>Loading profiles…</p>;
   if (query.isError)
     return <p className="text-red-700">{query.error.message}</p>;
@@ -82,6 +111,13 @@ export function ProfilesPage() {
       ? item.profileType === "master"
       : type === "application"
         ? item.profileType === "domain"
+        : false,
+  );
+  const importParents = profiles.filter((item) =>
+    importType === "domain"
+      ? item.profileType === "master"
+      : importType === "application"
+        ? item.profileType === "master" || item.profileType === "domain"
         : false,
   );
   function submit(event: FormEvent) {
@@ -169,6 +205,71 @@ export function ProfilesPage() {
         {create.isError && (
           <p className="text-sm text-red-700 md:col-span-2">
             {create.error.message}
+          </p>
+        )}
+      </form>
+      <form
+        className="mt-4 grid gap-3 rounded-lg border bg-white p-4 md:grid-cols-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          importBundle.mutate();
+        }}
+      >
+        <div className="md:col-span-4">
+          <h2 className="font-medium">Import profile JSON</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Creates a new profile and all structured sections. Uploaded files
+            and workflow history are not imported.
+          </p>
+        </div>
+        <input
+          className="rounded border px-3 py-2"
+          type="file"
+          accept="application/json,.json"
+          required
+          onChange={(event) => setImportFile(event.target.files?.[0])}
+        />
+        <select
+          className="rounded border px-3 py-2"
+          value={importType}
+          onChange={(event) => {
+            setImportType(event.target.value as ProfileType);
+            setImportParent("");
+          }}
+        >
+          <option value="master">Master Profile</option>
+          <option value="domain">Domain Profile</option>
+          <option value="application">Application Profile</option>
+        </select>
+        <select
+          className="rounded border px-3 py-2"
+          disabled={importType === "master"}
+          required={importType !== "master"}
+          value={importParent}
+          onChange={(event) => setImportParent(event.target.value)}
+        >
+          <option value="">
+            {importType === "master" ? "No parent" : "Select parent"}
+          </option>
+          {importParents.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <button
+          className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
+          disabled={
+            importBundle.isPending ||
+            !importFile ||
+            (importType !== "master" && !importParent)
+          }
+        >
+          {importBundle.isPending ? "Importing…" : "Import profile"}
+        </button>
+        {importBundle.isError && (
+          <p className="text-sm text-red-700 md:col-span-4">
+            {importBundle.error.message}
           </p>
         )}
       </form>

@@ -30,6 +30,7 @@ const (
 
 type Service struct {
 	profiles       Repository
+	bundles        BundleRepository
 	sections       SectionRepository
 	users          user.Repository
 	workflow       WorkflowRepository
@@ -55,6 +56,9 @@ func WithImportWorkflow(files filestore.FileStore, textExtractor TextExtractor, 
 
 func NewService(profiles Repository, sections SectionRepository, users user.Repository, options ...ServiceOption) *Service {
 	service := &Service{profiles: profiles, sections: sections, users: users}
+	if bundles, ok := profiles.(BundleRepository); ok {
+		service.bundles = bundles
+	}
 	for _, option := range options {
 		option(service)
 	}

@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"time"
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/application"
 	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
@@ -44,6 +45,8 @@ type Repository interface {
 	ListTaskRuns(context.Context, uuid.UUID) ([]application.ResearchRun, error)
 	ListRunSources(context.Context, uuid.UUID) ([]application.ResearchSource, error)
 	ListRunFindings(context.Context, uuid.UUID) ([]application.ResearchFinding, error)
+	ClaimResearchTask(context.Context, uuid.UUID, time.Time) (*ResearchTask, *application.ResearchRun, error)
+	CompleteResearchTask(context.Context, uuid.UUID, uuid.UUID, time.Time) (*ResearchTask, error)
 	PersistResearchTaskResult(context.Context, *ResearchTask, ResearchPersistence) error
 	CreateAgentSource(context.Context, *application.ResearchSource, *AgentActivity) error
 	CreateAgentFinding(context.Context, *application.ResearchFinding, *AgentActivity) error

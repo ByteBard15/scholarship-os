@@ -15,7 +15,6 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.ResearchTask("update research task")).Patch("/research-tasks/{taskID}", h.UpdateResearchTask)
 	r.With(owners.ResearchTask("delete research task")).Delete("/research-tasks/{taskID}", h.DeleteResearchTask)
 	r.With(owners.ResearchTask("queue research task")).Post("/research-tasks/{taskID}/queue", h.transitionTask("queue"))
-	r.With(owners.ResearchTask("start research task")).Post("/research-tasks/{taskID}/start", h.StartResearchTask)
 	r.With(owners.ResearchTask("cancel research task")).Post("/research-tasks/{taskID}/cancel", h.transitionTask("cancel"))
 	r.With(owners.ResearchTask("retry research task")).Post("/research-tasks/{taskID}/retry", h.transitionTask("retry"))
 	r.With(owners.ResearchTask("list research task outputs")).Get("/research-tasks/{taskID}/outputs", h.ListTaskOutputs)
@@ -70,11 +69,14 @@ func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handle
 	profileScope := appmw.RequireAgentScope(principal.ScopeProfiles)
 	informationScope := appmw.RequireAgentScope(principal.ScopeInformationRequests)
 
+	r.With(research).Get("/agent/research-tasks", h.PollResearchTasks)
 	r.With(research, owners.ResearchTask("agent get research task")).Get("/agent/research-tasks/{taskID}", h.GetResearchTask)
 	r.With(research, owners.ResearchTask("agent list research task links")).Get("/agent/research-tasks/{taskID}/links", h.ListTaskLinks)
 	r.With(research, owners.ResearchTask("agent start research task")).Post("/agent/research-tasks/{taskID}/start", h.StartResearchTask)
+	r.With(research, owners.ResearchTask("agent list research task runs")).Get("/agent/research-tasks/{taskID}/runs", h.ListTaskRuns)
 	r.With(research, owners.ResearchTask("agent create research source")).Post("/agent/research-tasks/{taskID}/sources", h.AgentCreateResearchSource)
 	r.With(research, owners.ResearchTask("agent create research finding")).Post("/agent/research-tasks/{taskID}/findings", h.AgentCreateResearchFinding)
+	r.With(research, owners.ResearchTask("agent complete research task")).Post("/agent/research-tasks/{taskID}/complete", h.CompleteResearchTask)
 	r.With(research).Post("/agent/application-proposals", h.AgentCreateApplicationProposal)
 
 	r.With(applicationScope, owners.Application("agent get application")).Get("/agent/applications/{applicationID}", applications.Get)

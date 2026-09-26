@@ -50,14 +50,6 @@ export const listProgrammes = (institutionId?: string) =>
   );
 export const listScholarships = () =>
   getJSON<CollectionEnvelope<Scholarship>>("/api/v1/scholarships");
-export const runResearch = (id: string) =>
-  requestJSON<DataEnvelope<ResearchRun>>(
-    `/api/v1/applications/${id}/research`,
-    {
-      method: "POST",
-      body: JSON.stringify({ trigger: "manual", researchType: "full" }),
-    },
-  );
 export const listResearch = (id: string) =>
   getJSON<CollectionEnvelope<ResearchRun>>(
     `/api/v1/applications/${id}/research`,

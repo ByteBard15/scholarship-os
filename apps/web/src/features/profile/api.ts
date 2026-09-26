@@ -6,7 +6,9 @@ import type {
   EffectiveProfile,
   ImportCandidate,
   Profile,
+  ProfileBundle,
   ProfileEntry,
+  ProfileFull,
   ProfileComparison,
   ProfileDocument,
   ProfileImport,
@@ -54,6 +56,13 @@ export const updateProfile = (
     method: "PATCH",
     body: JSON.stringify(input),
   });
+export const exportProfileBundle = (id: string) =>
+  getJSON<DataEnvelope<ProfileBundle>>(`/api/v1/profiles/${id}/export`);
+export const importProfileBundle = (userId: string, bundle: ProfileBundle) =>
+  requestJSON<DataEnvelope<ProfileFull>>(
+    `/api/v1/users/${userId}/profiles/import`,
+    { method: "POST", body: JSON.stringify(bundle) },
+  );
 export const putPersonalInfo = (id: string, input: PersonalInfo) =>
   requestJSON<DataEnvelope<PersonalInfo>>(
     `/api/v1/profiles/${id}/personal-info`,
