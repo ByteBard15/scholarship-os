@@ -12,9 +12,14 @@ import (
 
 	"github.com/example/scholarship-os/apps/api/internal/config"
 	"github.com/example/scholarship-os/apps/api/internal/database"
-	"github.com/example/scholarship-os/apps/api/internal/profile"
+	"github.com/example/scholarship-os/apps/api/internal/features/application"
+	featureauth "github.com/example/scholarship-os/apps/api/internal/features/auth"
+	"github.com/example/scholarship-os/apps/api/internal/features/catalog"
+	"github.com/example/scholarship-os/apps/api/internal/features/profile"
+	"github.com/example/scholarship-os/apps/api/internal/features/user"
+	"github.com/example/scholarship-os/apps/api/internal/features/workflow"
 	"github.com/example/scholarship-os/apps/api/internal/server"
-	"github.com/example/scholarship-os/apps/api/internal/user"
+	"github.com/example/scholarship-os/apps/api/pkg/filestore"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -45,10 +50,35 @@ func main() {
 	}()
 	validate := validator.New(validator.WithRequiredStructEnabled())
 	userRepo := user.NewGORMRepository(db)
+	authRepo := featureauth.NewGORMRepository(db)
 	profileRepo := profile.NewGORMRepository(db)
+	catalogRepo := catalog.NewGORMRepository(db)
+	applicationRepo := application.NewGORMRepository(db)
+	workflowRepo := workflow.NewGORMRepository(db)
+	fileStore, err := filestore.NewLocalStore(cfg.UploadDir)
+	if err != nil {
+		log.Error("initialize file storage", "error", err)
+		os.Exit(1)
+	}
 	userService := user.NewService(userRepo)
-	profileService := profile.NewService(profileRepo, profileRepo, userRepo)
-	handler := server.NewRouter(log, sqlDB, cfg.WebOrigin, user.NewHandler(userService, validate, log), profile.NewHandler(profileService, validate, log))
+	authService := featureauth.NewService(authRepo, featureauth.NewArgon2idHasher(), cfg.Auth.SystemAPIKey, cfg.Auth.SessionTTL, cfg.Auth.TokenPepper)
+	profileService := profile.NewService(profileRepo, profileRepo, userRepo,
+		profile.WithWorkflowRepository(profileRepo),
+		profile.WithImportWorkflow(fileStore, profile.NewDocumentTextExtractor(cfg.MaxUploadBytes), profile.NewDeterministicExtractor(), cfg.MaxUploadBytes),
+	)
+	catalogService := catalog.NewService(catalogRepo)
+	applicationService := application.NewService(applicationRepo, profileService, catalogService)
+	researchService := application.NewResearchService(applicationRepo, applicationService, application.NewMockApplicationResearcher(), log)
+	workflowService := workflow.NewService(workflowRepo, userRepo, applicationService, profileService, workflow.NewMockWebResearchProvider(), workflow.NewMockApplicationPrefiller())
+	applicationService.SetPreparationReader(workflowService)
+	handler := server.NewRouter(log, sqlDB, db, cfg.WebOrigin, authService,
+		featureauth.NewHandler(authService, validate),
+		user.NewHandler(userService, validate),
+		profile.NewHandler(profileService, validate),
+		catalog.NewHandler(catalogService, validate),
+		application.NewHandler(applicationService, researchService, validate),
+		workflow.NewHandler(workflowService, validate),
+	)
 	httpServer := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	serverErrors := make(chan error, 1)
 	go func() {

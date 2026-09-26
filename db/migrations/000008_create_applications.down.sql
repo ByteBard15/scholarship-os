@@ -1,0 +1,10 @@
+DROP TABLE IF EXISTS requirement_evidence;
+DROP TABLE IF EXISTS external_task_references;
+DROP TABLE IF EXISTS application_tasks;
+DROP TABLE IF EXISTS application_urls;
+DROP TABLE IF EXISTS application_supervisors;
+DROP TABLE IF EXISTS application_contacts;
+DROP TABLE IF EXISTS application_funding;
+DROP TABLE IF EXISTS application_deadlines;
+DROP TABLE IF EXISTS application_requirements;
+DROP TABLE IF EXISTS applications;

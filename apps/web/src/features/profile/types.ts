@@ -1,28 +1,105 @@
+export type ProfileType = "master" | "domain" | "application";
 export type Profile = {
   id: string;
   userId: string;
   name: string;
+  profileType: ProfileType;
+  parentProfileId?: string;
   headline?: string;
   summary?: string;
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
 };
-
-export type ProfileFull = Profile & {
-  personalInfo: Record<string, unknown> | null;
-  education: Record<string, unknown>[];
-  employment: Record<string, unknown>[];
-  projects: Record<string, unknown>[];
-  publications: Record<string, unknown>[];
-  articles: Record<string, unknown>[];
-  skills: Record<string, unknown>[];
-  researchInterests: Record<string, unknown>[];
-  careerGoals: Record<string, unknown>[];
-  certifications: Record<string, unknown>[];
-  awards: Record<string, unknown>[];
-  volunteering: Record<string, unknown>[];
+export type ProfileEntry = Record<string, unknown> & {
+  id: string;
+  profileId: string;
+  inherited?: boolean;
+  inheritedFromProfileId?: string;
+  modifiedInProfileId?: string;
 };
-
+export type ProfileFull = Profile & {
+  personalInfo: ProfileEntry | null;
+  education: ProfileEntry[];
+  employment: ProfileEntry[];
+  projects: ProfileEntry[];
+  publications: ProfileEntry[];
+  articles: ProfileEntry[];
+  skills: ProfileEntry[];
+  researchInterests: ProfileEntry[];
+  careerGoals: ProfileEntry[];
+  certifications: ProfileEntry[];
+  awards: ProfileEntry[];
+  volunteering: ProfileEntry[];
+};
+export type LineageItem = { id: string; name: string; type: ProfileType };
+export type EffectiveProfile = ProfileFull & { lineage: LineageItem[] };
+export type Completeness = {
+  score: number;
+  sections: { name: string; status: string }[];
+  notice: string;
+};
+export type ProfileDocument = {
+  id: string;
+  profileId: string;
+  documentType: string;
+  originalFilename: string;
+  storageProvider: string;
+  mimeType: string;
+  fileSize: number;
+  sha256?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type ProfileImport = {
+  id: string;
+  profileId: string;
+  documentId: string;
+  importType: string;
+  status: string;
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+export type ImportCandidate = {
+  id: string;
+  importId: string;
+  sectionType: string;
+  candidateData: Record<string, unknown>;
+  sourceText?: string;
+  confidence?: number;
+  status: string;
+  matchedEntityId?: string;
+  existing?: Record<string, unknown>;
+  changes?: { field: string; existing: unknown; candidate: unknown }[];
+};
+export type ProfileOverride = {
+  id: string;
+  profileId: string;
+  entityType: string;
+  entityId?: string;
+  fieldName: string;
+  overrideType: "replace" | "hide" | "append";
+  value?: unknown;
+  reason?: string;
+  createdAt: string;
+};
+export type ProfileSnapshot = {
+  id: string;
+  profileId: string;
+  version: number;
+  createdAt: string;
+  createdBy?: string;
+  reason?: string;
+};
+export type ProfileComparison = {
+  baseProfile: Profile;
+  comparedProfile: Profile;
+  inheritedEntities: ProfileEntry[];
+  hiddenEntities: ProfileOverride[];
+  modifiedFields: ProfileOverride[];
+  appendedEntities: ProfileEntry[];
+};
 export type DataEnvelope<T> = { data: T };
 export type CollectionEnvelope<T> = { data: T[]; meta: { count: number } };

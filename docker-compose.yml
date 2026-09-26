@@ -20,6 +20,18 @@ services:
       retries: 10
       start_period: 5s
     restart: unless-stopped
+  migrate:
+    image: migrate/migrate:v4.18.3
+    profiles: ["tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./db/migrations:/migrations:ro
+    command:
+      - -path=/migrations
+      - -database=postgres://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-postgres}@postgres:5432/${DATABASE_NAME:-scholarship_os}?sslmode=disable
+      - up
 
 volumes:
   scholarship_os_postgres:

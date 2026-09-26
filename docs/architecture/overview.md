@@ -6,6 +6,6 @@ Scholarship OS is a monorepo with independently runnable API and web application
 React/Vite → JSON API → chi handler → service → repository → GORM → PostgreSQL
 ```
 
-The present bounded contexts are users and applicant profiles. An account-level `User` can own multiple `ApplicantProfile` aggregates. Profile sections are relational child entities loaded only for their specific endpoints or the explicit `/full` endpoint.
+The bounded contexts are users, applicant profiles, opportunity catalog, applications, and controlled research. An account-level `User` owns canonical/derived profiles and concrete applications. Profile inheritance remains encapsulated by the profile service. Applications own relational requirements, deadlines, funding, contacts, supervisors, URLs, tasks, and evidence links. Research runs persist sources and reviewable findings before structured data is applied.
 
-External authentication can later map provider identities to `User.ExternalAuthID`. Authentication middleware will eventually be mounted centrally in the server package; no fake identity behavior exists today. Future scholarship, application, document, integration, and agent domains must be introduced as separate phases.
+External authentication can later map provider identities to `User.ExternalAuthID`. Authentication middleware will eventually be mounted centrally in the server package; no fake identity behavior exists today. Future integrations and live agent providers remain behind typed service/tool boundaries.

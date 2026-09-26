@@ -1,6 +1,10 @@
 # Scholarship OS
 
-Scholarship OS is the foundation for an AI-assisted scholarship application management platform. This repository is currently in the foundational profile-management phase: account records, reusable applicant profiles, and relational profile sections. Scholarship discovery, applications, document generation, external integrations, and AI workflows are intentionally deferred.
+Scholarship OS is an AI-assisted scholarship application management platform. Phase 4 adds a complete human-reviewed workflow from Research Task to Application Proposal, approved Application, questionnaires, evidence-aware prefill, and resolvable Information Requests.
+
+Phase 4.5 adds human email/password sessions, scoped agent credentials, a root-equivalent system key, workspace ownership enforcement, and protected frontend routes.
+
+The development research and prefill providers are deterministic and local, so no AI credential is required. Vendor-backed live web research, Google OAuth/Tasks synchronization, notifications, document generation, and autonomous submission are intentionally deferred.
 
 ## Stack
 
@@ -20,23 +24,38 @@ Scholarship OS is the foundation for an AI-assisted scholarship application mana
 
 ```bash
 cp .env.example .env
+# Put a generated sys_ key in SYSTEM_API_KEY before starting the API.
 make setup
-make db-up
-make migrate-up
+make db-bootstrap
 make api
 ```
 
 In another terminal run `make web`, then open `http://localhost:5173`. The API listens on `http://localhost:8080`; `GET /health` checks API and database availability.
 
-Authentication is intentionally not simulated. To display profiles in the frontend during development, create a user through `POST /api/v1/users`, then put its UUID in `.env` as `VITE_DEMO_USER_ID=<uuid>` before starting Vite.
+Generate a development system key with `printf 'sys_%s\n' "$(openssl rand -hex 32)"` and place the result in the uncommitted `.env`. `SYSTEM_API_KEY` is equivalent to root access: never expose it to the frontend or an agent.
+
+Register the first user from trusted administration tooling:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H 'Authorization: Bearer sys_<system-secret>' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alex@example.test","password":"a development password","displayName":"Alex Example"}'
+```
+
+Then sign in at `http://localhost:5173/login`, or call `/api/v1/auth/login` to obtain an expiring `usr_` bearer token. Registration creates a default Master Profile unless disabled explicitly.
+
+To issue a scoped agent credential, call the SYSTEM-only `/api/v1/admin/agent-credentials` endpoint with a user ID, name, and scopes. The returned `agt_` key is shown once and works only on dedicated `/api/v1/agent` routes for its associated user workspace.
+
+For a manual end-to-end flow, use `tmp/requests.http`: create a user and Master Profile, create and start a Research Task, review its sources/findings and Application Proposal, approve it with a parent profile, run application prefill, respond to an Information Request, and process that response. No discovered scholarship becomes an Application before explicit approval.
 
 ## Environment
 
-`.env.example` contains safe local defaults. The Go process reads environment variables directly; run it through `make api` after copying `.env.example` to `.env`, or export the values yourself. Production mode requires explicit database credentials and `WEB_ORIGIN`.
+`.env.example` contains safe local defaults and deliberately leaves `SYSTEM_API_KEY` blank. The Go process reads environment variables directly; run it through `make api` after copying `.env.example` to `.env`, or export the values yourself. Production mode requires explicit database credentials, `WEB_ORIGIN`, and `SYSTEM_API_KEY`. `USER_SESSION_TTL` defaults to 24 hours. `AUTH_TOKEN_HASH_PEPPER` is optional and, if used, must remain stable and secret.
 
 ## Database and migrations
 
-`make db-up` starts PostgreSQL with a healthcheck and persistent named volume. Install golang-migrate using its official instructions, then use:
+`make db-bootstrap` starts PostgreSQL and runs all migrations through the containerized migration tool. To use a locally installed golang-migrate CLI instead:
 
 ```bash
 make migrate-up
@@ -47,18 +66,22 @@ make migrate-down
 
 ## Development commands
 
-Run `make help` for the complete list. Common commands are `make api`, `make web`, `make test`, `make lint`, and `make fmt`.
+Run `make help` for the complete list. Common commands are `make api`, `make web`, `make test`, `make lint`, `make fmt`, and `make seed`. The seed is optional and contains only fictional catalog records.
 
 ## Repository structure
 
 ```text
-apps/api/        Go API, organized by domain and layer
-apps/web/        React/Vite frontend shell
-db/migrations/   versioned up/down SQL migrations
-db/seeds/        development seed guidance
-agents/          rules for future controlled AI agents
-docs/            architecture, API, and setup documentation
-scripts/         future small development utilities
+apps/api/internal/features/   domain packages with DTO, handler, service, and repository layers
+apps/api/internal/            server, middleware, configuration, database, and controlled adapters
+apps/api/pkg/                 reusable response and file-storage utilities
+apps/web/                     React/Vite frontend
+db/migrations/                versioned up/down SQL migrations
+db/seeds/                     development seed guidance
+agents/                       rules for future controlled AI agents
+docs/                         architecture, API, and setup documentation
+scripts/                      future small development utilities
 ```
 
-See [getting started](docs/development/getting-started.md), the [architecture overview](docs/architecture/overview.md), and the [profile API](docs/api/profiles.md) for details.
+The HTTP contract uses `camelCase` for JSON properties, query parameters, and multipart fields. PostgreSQL and GORM schema identifiers use `snake_case`.
+
+See [getting started](docs/development/getting-started.md), [authentication API](docs/api/authentication.md), [application architecture](docs/architecture/application-domain.md), [research pipeline](docs/architecture/research-pipeline.md), and the [applications API](docs/api/applications.md) for details.
