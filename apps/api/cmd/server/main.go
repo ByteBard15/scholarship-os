@@ -18,6 +18,7 @@ import (
 	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/byte/scholarship-os/apps/api/internal/features/workflow"
+	"github.com/byte/scholarship-os/apps/api/internal/features/writing"
 	"github.com/byte/scholarship-os/apps/api/internal/server"
 	"github.com/byte/scholarship-os/apps/api/pkg/filestore"
 	"github.com/go-playground/validator/v10"
@@ -55,6 +56,7 @@ func main() {
 	catalogRepo := catalog.NewGORMRepository(db)
 	applicationRepo := application.NewGORMRepository(db)
 	workflowRepo := workflow.NewGORMRepository(db)
+	writingRepo := writing.NewGORMRepository(db)
 	fileStore, err := filestore.NewLocalStore(cfg.UploadDir)
 	if err != nil {
 		log.Error("initialize file storage", "error", err)
@@ -70,6 +72,7 @@ func main() {
 	applicationService := application.NewService(applicationRepo, profileService, catalogService)
 	researchService := application.NewResearchService(applicationRepo, applicationService, log)
 	workflowService := workflow.NewService(workflowRepo, userRepo, applicationService, profileService, workflow.NewMockApplicationPrefiller())
+	writingService := writing.NewService(writingRepo)
 	applicationService.SetPreparationReader(workflowService)
 	handler := server.NewRouter(log, sqlDB, db, cfg.WebOrigin, authService,
 		featureauth.NewHandler(authService, validate),
@@ -78,6 +81,7 @@ func main() {
 		catalog.NewHandler(catalogService, validate),
 		application.NewHandler(applicationService, researchService, validate),
 		workflow.NewHandler(workflowService, validate),
+		writing.NewHandler(writingService, validate),
 	)
 	httpServer := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second}
 	serverErrors := make(chan error, 1)

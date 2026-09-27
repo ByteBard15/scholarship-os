@@ -46,6 +46,8 @@ The backend flow is handler → service → repository → GORM → PostgreSQL.
 - `ResearchContext` is reusable user-owned question/answer input that may be attached to multiple Research Tasks. It informs research but must not be treated as canonical profile data or as an Information Request.
 - Prefill agents may write supported factual fields and suggested answers, but subjective answers remain reviewable and unsupported facts become deduplicated `InformationRequest` records.
 - An `InformationRequest` becomes completed only after its response has been transactionally applied to the controlled target. Completed requests are not reopened implicitly.
+- Reusable applicant writing belongs in the writing library with an explicit `documentType` and normalized tags. Agents must list tags before retrieving content, load no more source writing than needed, and preserve `derived_from` provenance when creating a new draft.
+- Agent-generated writing is always `suggested` until human review. It may rephrase supported source material but must not fabricate applicant facts or recommendation claims.
 
 ## Database Rules
 

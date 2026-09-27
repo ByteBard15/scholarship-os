@@ -12,6 +12,7 @@ import (
 	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/byte/scholarship-os/apps/api/internal/features/workflow"
+	"github.com/byte/scholarship-os/apps/api/internal/features/writing"
 	appmw "github.com/byte/scholarship-os/apps/api/internal/middleware"
 	"github.com/byte/scholarship-os/apps/api/pkg/response"
 	"github.com/go-chi/chi/v5"
@@ -20,7 +21,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, authenticator *featureauth.Service, authHandler *featureauth.Handler, users *user.Handler, profiles *profile.Handler, catalogs *catalog.Handler, applications *application.Handler, workflows *workflow.Handler) http.Handler {
+func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, authenticator *featureauth.Service, authHandler *featureauth.Handler, users *user.Handler, profiles *profile.Handler, catalogs *catalog.Handler, applications *application.Handler, workflows *workflow.Handler, writings *writing.Handler) http.Handler {
 	owners := ownership.NewMiddleware(ownership.NewGORMRepository(db))
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Recoverer, appmw.RequestLogger(log))
@@ -44,6 +45,7 @@ func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, a
 			catalog.MountRoutes(r, catalogs)
 			application.MountRoutes(r, applications, owners)
 			workflow.MountRoutes(r, workflows, owners)
+			writing.MountRoutes(r, writings)
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(appmw.Authenticate(authenticator), appmw.RequireSystem)
@@ -52,6 +54,7 @@ func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, a
 		r.Group(func(r chi.Router) {
 			r.Use(appmw.Authenticate(authenticator))
 			workflow.MountAgentRoutes(r, workflows, applications, owners)
+			writing.MountAgentRoutes(r, writings)
 		})
 	})
 	return r

@@ -22,7 +22,7 @@ import {
   useTaskSources,
 } from "../features/workflow/queries";
 import { useProfiles } from "../features/profile/queries";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../features/auth/AuthProvider";
 import { CollapsibleText } from "../components/CollapsibleText";
 
@@ -43,6 +43,27 @@ export function ResearchDetailPage() {
   const sources = useTaskSources(id, latestRun),
     findings = useTaskFindings(id, latestRun);
   const [parent, setParent] = useState("");
+  const parents =
+    profiles.data?.data.filter(
+      (profile) =>
+        profile.profileType === "master" || profile.profileType === "domain",
+    ) ?? [];
+  useEffect(() => {
+    if (parent || !parents.length) return;
+
+    const taskProfile = parents.find(
+      (profile) => profile.id === task.data?.data.profileId,
+    );
+    const preferredParent =
+      taskProfile ??
+      parents.find(
+        (profile) => profile.profileType === "master" && profile.isDefault,
+      ) ??
+      parents.find((profile) => profile.profileType === "master") ??
+      parents[0];
+
+    setParent(preferredParent.id);
+  }, [parent, parents, task.data?.data.profileId]);
   const client = useQueryClient();
   const refresh = () =>
     client.invalidateQueries({ queryKey: workflowKeys.all });
@@ -72,11 +93,6 @@ export function ResearchDetailPage() {
       proposals.data?.data.filter(
         (proposal) => proposal.researchTaskId === id,
       ) ?? [];
-  const parents =
-    profiles.data?.data.filter(
-      (profile) =>
-        profile.profileType === "master" || profile.profileType === "domain",
-    ) ?? [];
   return (
     <section>
       <Link className="text-sm text-indigo-700" to="/research">
@@ -209,9 +225,20 @@ export function ResearchDetailPage() {
         </div>
       </Panel>
       <Panel title="Application Proposals" wide>
-        <div className="mb-3">
+        <div className="mb-4 rounded border border-indigo-100 bg-indigo-50 p-3">
+          <label
+            className="block text-sm font-medium text-slate-700"
+            htmlFor="proposal-parent-profile"
+          >
+            Application profile parent
+          </label>
+          <p className="mt-1 text-xs text-slate-600">
+            Approval creates a new isolated Application Profile. Choose the
+            Master or Domain profile it should inherit from.
+          </p>
           <select
-            className="rounded border px-3 py-2"
+            id="proposal-parent-profile"
+            className="mt-2 w-full rounded border bg-white px-3 py-2 sm:w-auto"
             value={parent}
             onChange={(event) => setParent(event.target.value)}
           >
@@ -222,6 +249,11 @@ export function ResearchDetailPage() {
               </option>
             ))}
           </select>
+          {!profiles.isPending && parents.length === 0 && (
+            <p className="mt-2 text-sm text-red-700">
+              Create a Master or Domain profile before approving this proposal.
+            </p>
+          )}
         </div>
         {taskProposals.length ? (
           taskProposals.map((proposal) => (
@@ -304,11 +336,13 @@ export function ResearchDetailPage() {
                 {proposal.status === "pending" && (
                   <>
                     <button
-                      disabled={!parent}
+                      disabled={!parent || approve.isPending}
                       onClick={() => approve.mutate(proposal.id)}
                       className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
                     >
-                      Approve Application
+                      {approve.isPending
+                        ? "Creating application…"
+                        : "Approve and create application"}
                     </button>
                     <button
                       onClick={() =>
@@ -337,6 +371,19 @@ export function ResearchDetailPage() {
                   </button>
                 )}
               </div>
+              {proposal.status === "pending" &&
+                !parent &&
+                parents.length > 0 && (
+                  <p className="mt-2 text-xs text-amber-700">
+                    Select an application profile parent above to enable
+                    approval.
+                  </p>
+                )}
+              {approve.isError && (
+                <p className="mt-2 text-sm text-red-700">
+                  Approval failed: {approve.error.message}
+                </p>
+              )}
             </article>
           ))
         ) : (

@@ -22,6 +22,7 @@ const (
 	ScopeInformationRequests = "information_requests"
 	ScopeProfiles            = "profiles"
 	ScopeTasks               = "tasks"
+	ScopeWriting             = "writing"
 )
 
 var (
