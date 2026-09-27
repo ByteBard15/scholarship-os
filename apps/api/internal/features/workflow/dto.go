@@ -164,6 +164,8 @@ type AgentApplicationProposalRequest struct {
 	Intake              *string         `json:"intake"`
 	IntakeYear          *int            `json:"intakeYear"`
 	Summary             *string         `json:"summary"`
+	Priority            string          `json:"priority" validate:"omitempty,oneof=highest high medium low"`
+	Rank                *int            `json:"rank" validate:"omitempty,gte=1"`
 	Confidence          *float64        `json:"confidence" validate:"omitempty,gte=0,lte=1"`
 	ReasoningSummary    *string         `json:"reasoningSummary"`
 	SourceIDs           []uuid.UUID     `json:"sourceIds"`
@@ -274,6 +276,8 @@ type ApplicationProposalCandidate struct {
 	Intake              *string              `json:"intake"`
 	IntakeYear          *int                 `json:"intakeYear"`
 	Summary             *string              `json:"summary"`
+	Priority            string               `json:"priority"`
+	Rank                *int                 `json:"rank"`
 	Confidence          *float64             `json:"confidence"`
 	ReasoningSummary    *string              `json:"reasoningSummary"`
 	SourceKeys          []string             `json:"sourceKeys"`
@@ -287,6 +291,8 @@ type ApplicationProposalResponse struct {
 	InstitutionID       *uuid.UUID               `json:"institutionId,omitempty"`
 	ProgrammeID         *uuid.UUID               `json:"programmeId,omitempty"`
 	ScholarshipID       *uuid.UUID               `json:"scholarshipId,omitempty"`
+	ParentProfileID     *uuid.UUID               `json:"parentProfileId,omitempty"`
+	ApplicationID       *uuid.UUID               `json:"applicationId,omitempty"`
 	ProposedInstitution json.RawMessage          `json:"proposedInstitution,omitempty"`
 	ProposedProgramme   json.RawMessage          `json:"proposedProgramme,omitempty"`
 	ProposedScholarship json.RawMessage          `json:"proposedScholarship,omitempty"`
@@ -296,6 +302,8 @@ type ApplicationProposalResponse struct {
 	IntakeYear          *int                     `json:"intakeYear,omitempty"`
 	Summary             *string                  `json:"summary,omitempty"`
 	Status              string                   `json:"status"`
+	Priority            string                   `json:"priority"`
+	Rank                *int                     `json:"rank,omitempty"`
 	Confidence          *float64                 `json:"confidence,omitempty"`
 	ReasoningSummary    *string                  `json:"reasoningSummary,omitempty"`
 	Sources             []ProposalSourceResponse `json:"sources"`

@@ -90,9 +90,9 @@ export function ResearchDetailPage() {
   if (task.isError) return <p className="text-red-700">{task.error.message}</p>;
   const item = task.data.data,
     taskProposals =
-      proposals.data?.data.filter(
-        (proposal) => proposal.researchTaskId === id,
-      ) ?? [];
+      proposals.data?.data
+        .filter((proposal) => proposal.researchTaskId === id)
+        .sort(compareProposals) ?? [];
   return (
     <section>
       <Link className="text-sm text-indigo-700" to="/research">
@@ -233,8 +233,9 @@ export function ResearchDetailPage() {
             Application profile parent
           </label>
           <p className="mt-1 text-xs text-slate-600">
-            Approval creates a new isolated Application Profile. Choose the
-            Master or Domain profile it should inherit from.
+            Approval records the Master or Domain profile the future Application
+            Profile should inherit from. An agent creates the Application
+            afterward.
           </p>
           <select
             id="proposal-parent-profile"
@@ -258,8 +259,16 @@ export function ResearchDetailPage() {
         {taskProposals.length ? (
           taskProposals.map((proposal) => (
             <article key={proposal.id} className="mb-3 rounded border p-4">
-              <div className="flex justify-between">
-                <h3 className="font-medium">{proposal.name}</h3>
+              <div className="flex flex-wrap justify-between gap-2">
+                <div>
+                  <h3 className="font-medium">{proposal.name}</h3>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {proposal.rank ? `Rank #${proposal.rank} · ` : ""}
+                    <span className="font-medium uppercase text-indigo-700">
+                      {proposal.priority} priority
+                    </span>
+                  </p>
+                </div>
                 <span className="text-xs uppercase">{proposal.status}</span>
               </div>
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -341,8 +350,8 @@ export function ResearchDetailPage() {
                       className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
                     >
                       {approve.isPending
-                        ? "Creating application…"
-                        : "Approve and create application"}
+                        ? "Approving proposal…"
+                        : "Approve proposal for agent"}
                     </button>
                     <button
                       onClick={() =>
@@ -379,6 +388,20 @@ export function ResearchDetailPage() {
                     approval.
                   </p>
                 )}
+              {proposal.status === "approved" && !proposal.applicationId && (
+                <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                  Approved. Waiting for an application agent to create the
+                  Application workspace.
+                </p>
+              )}
+              {proposal.applicationId && (
+                <Link
+                  className="mt-3 inline-block text-sm text-indigo-700 hover:underline"
+                  to={`/applications/${proposal.applicationId}`}
+                >
+                  Open created application →
+                </Link>
+              )}
               {approve.isError && (
                 <p className="mt-2 text-sm text-red-700">
                   Approval failed: {approve.error.message}
@@ -603,6 +626,19 @@ function humanize(value: string) {
     .replaceAll("_", " ")
     .replaceAll("-", " ")
     .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function compareProposals(
+  left: import("../features/workflow/types").ApplicationProposal,
+  right: import("../features/workflow/types").ApplicationProposal,
+) {
+  const weight = { highest: 0, high: 1, medium: 2, low: 3 };
+  const priorityDifference = weight[left.priority] - weight[right.priority];
+  if (priorityDifference !== 0) return priorityDifference;
+  if (left.rank != null && right.rank != null) return left.rank - right.rank;
+  if (left.rank != null) return -1;
+  if (right.rank != null) return 1;
+  return left.createdAt.localeCompare(right.createdAt);
 }
 
 function DraftTaskEditor({

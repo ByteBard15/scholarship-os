@@ -572,7 +572,29 @@ func (h *Handler) ApproveProposal(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
-	response.Data(w, 201, applicationResponse(item))
+	response.Data(w, http.StatusOK, item)
+}
+
+func (h *Handler) AgentListApprovedProposals(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListApprovedProposalsForAgent(r.Context())
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Collection(w, items, len(items))
+}
+
+func (h *Handler) AgentCreateApplicationFromProposal(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "proposalID")
+	if !ok {
+		return
+	}
+	item, err := h.service.CreateApplicationFromApprovedProposal(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusCreated, applicationResponse(item))
 }
 func (h *Handler) reviewProposal(action string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

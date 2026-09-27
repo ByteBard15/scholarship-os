@@ -42,6 +42,8 @@ The backend flow is handler → service → repository → GORM → PostgreSQL.
 - Deadline precision matters: vague source text must not be converted into an invented exact timestamp.
 - Agents and integrations use `internal/agenttools`; never expose a generic database tool.
 - No discovered opportunity becomes an `Application` until a human explicitly approves its `ApplicationProposal`.
+- Human proposal approval records the selected parent profile but does not create an Application. An authenticated agent with the `applications` scope polls approved, unmaterialized proposals and performs the transactional Application bootstrap.
+- A Research Task may produce multiple independent Application Proposals. Agents assign priority and optional rank without conflating either with evidence confidence; users decide which proposals to approve and may approve more than one.
 - `ResearchTask` input, links, runs, sources, findings, proposals, and outputs retain a traceable lineage.
 - `ResearchContext` is reusable user-owned question/answer input that may be attached to multiple Research Tasks. It informs research but must not be treated as canonical profile data or as an Information Request.
 - Prefill agents may write supported factual fields and suggested answers, but subjective answers remain reviewable and unsupported facts become deduplicated `InformationRequest` records.

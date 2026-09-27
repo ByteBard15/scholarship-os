@@ -3,6 +3,7 @@ package agenttools
 import (
 	"context"
 
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
 	"github.com/byte/scholarship-os/apps/api/internal/features/workflow"
 	"github.com/google/uuid"
 )
@@ -14,6 +15,8 @@ type WorkflowAgentTools interface {
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	ListResearchTaskLinks(context.Context, uuid.UUID) ([]workflow.ResearchTaskLink, error)
 	GetApplicationProposal(context.Context, uuid.UUID) (*workflow.ApplicationProposalResponse, error)
+	ListApprovedApplicationProposals(context.Context) ([]workflow.ApplicationProposalResponse, error)
+	CreateApplicationFromApprovedProposal(context.Context, uuid.UUID) (*application.Application, error)
 	CreateApplicationQuestionnaire(context.Context, uuid.UUID, workflow.QuestionnaireRequest) (*workflow.ApplicationQuestionnaire, error)
 	CreateApplicationQuestion(context.Context, uuid.UUID, workflow.QuestionRequest) (*workflow.ApplicationQuestion, error)
 	UpdateApplicationField(context.Context, uuid.UUID, uuid.UUID, workflow.ApplicationFieldRequest) (*workflow.ApplicationField, error)
@@ -27,6 +30,8 @@ type workflowService interface {
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	ListTaskLinks(context.Context, uuid.UUID) ([]workflow.ResearchTaskLink, error)
 	GetProposal(context.Context, uuid.UUID) (*workflow.ApplicationProposalResponse, error)
+	ListApprovedProposalsForAgent(context.Context) ([]workflow.ApplicationProposalResponse, error)
+	CreateApplicationFromApprovedProposal(context.Context, uuid.UUID) (*application.Application, error)
 	CreateQuestionnaire(context.Context, uuid.UUID, workflow.QuestionnaireRequest) (*workflow.ApplicationQuestionnaire, error)
 	CreateQuestion(context.Context, uuid.UUID, workflow.QuestionRequest) (*workflow.ApplicationQuestion, error)
 	UpdateField(context.Context, uuid.UUID, uuid.UUID, workflow.ApplicationFieldRequest) (*workflow.ApplicationField, error)
@@ -50,6 +55,12 @@ func (t *ControlledWorkflowTools) ListResearchTaskLinks(ctx context.Context, id 
 }
 func (t *ControlledWorkflowTools) GetApplicationProposal(ctx context.Context, id uuid.UUID) (*workflow.ApplicationProposalResponse, error) {
 	return t.workflows.GetProposal(ctx, id)
+}
+func (t *ControlledWorkflowTools) ListApprovedApplicationProposals(ctx context.Context) ([]workflow.ApplicationProposalResponse, error) {
+	return t.workflows.ListApprovedProposalsForAgent(ctx)
+}
+func (t *ControlledWorkflowTools) CreateApplicationFromApprovedProposal(ctx context.Context, id uuid.UUID) (*application.Application, error) {
+	return t.workflows.CreateApplicationFromApprovedProposal(ctx, id)
 }
 func (t *ControlledWorkflowTools) CreateApplicationQuestionnaire(ctx context.Context, applicationID uuid.UUID, request workflow.QuestionnaireRequest) (*workflow.ApplicationQuestionnaire, error) {
 	return t.workflows.CreateQuestionnaire(ctx, applicationID, request)

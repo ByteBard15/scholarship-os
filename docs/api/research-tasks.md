@@ -28,7 +28,7 @@ Scoped research agents consume queued work through:
 - `POST /api/v1/agent/research-tasks/{taskID}/start` — atomically claims one task and returns both the task and its new `researchRun`.
 - `GET .../{taskID}/links|contexts|effective-profile|runs` — loads agent input, resolves the selected profile through the profile service, and recovers the current run ID.
 - `POST .../{taskID}/sources|findings` — persists typed, provenance-bearing results.
-- `POST /api/v1/agent/application-proposals` — creates a proposal for human review.
+- `POST /api/v1/agent/application-proposals` — creates one proposal for human review. Call it once per viable opportunity; include `priority` and optional `rank` to present a useful shortlist.
 - `POST .../{taskID}/complete` with `{ "researchRunId": "..." }` — finishes submission and marks the task/run `review_required`.
 
 The API never performs live or mock research while handling `start`. If several agents poll the same task, only the first successful claim may transition it from `queued` to `running`.

@@ -17,6 +17,7 @@ export function AppLayout() {
             <NavLink to="/profiles">Profiles</NavLink>
             <NavLink to="/applications">Applications</NavLink>
             <NavLink to="/research">Research</NavLink>
+            <NavLink to="/writing">Writing</NavLink>
             <NavLink to="/information-requests">Requests</NavLink>
             <button
               type="button"

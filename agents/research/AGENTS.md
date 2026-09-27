@@ -38,8 +38,8 @@ The current provider is deterministic and local. Future live web or AI providers
 2. Read the title, description, custom instructions, and every supplied link.
 3. Research official sources first and persist sources before claims.
 4. Persist typed findings with confidence, supporting text, and verification state.
-5. Create an `ApplicationProposal` with source links when an opportunity is found.
+5. Create one `ApplicationProposal` per viable opportunity. A Research Task may produce multiple proposals; assign each a priority (`highest`, `high`, `medium`, or `low`) and, when comparing a shortlist, a one-based rank. Confidence describes evidence certainty and must not be used as the priority.
 6. Do not create an `Application`.
 7. Mark the task `review_required` and stop until a human approves or rejects the proposal.
 
-Rejected proposals and their research history remain available. Never bypass the proposal approval boundary.
+The user may approve any number of proposals from the shortlist. Rejected proposals and their research history remain available. Never bypass the proposal approval boundary.

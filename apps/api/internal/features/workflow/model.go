@@ -90,6 +90,8 @@ type ApplicationProposal struct {
 	InstitutionID       *uuid.UUID   `gorm:"type:uuid"`
 	ProgrammeID         *uuid.UUID   `gorm:"type:uuid"`
 	ScholarshipID       *uuid.UUID   `gorm:"type:uuid"`
+	ParentProfileID     *uuid.UUID   `gorm:"type:uuid;index"`
+	ApplicationID       *uuid.UUID   `gorm:"type:uuid;index"`
 	ProposedInstitution profile.JSON `gorm:"type:jsonb"`
 	ProposedProgramme   profile.JSON `gorm:"type:jsonb"`
 	ProposedScholarship profile.JSON `gorm:"type:jsonb"`
@@ -99,6 +101,8 @@ type ApplicationProposal struct {
 	IntakeYear          *int
 	Summary             *string `gorm:"type:text"`
 	Status              string  `gorm:"not null;index"`
+	Priority            string  `gorm:"not null;default:medium"`
+	Rank                *int
 	Confidence          *float64
 	ReasoningSummary    *string `gorm:"type:text"`
 	ReviewedAt          *time.Time

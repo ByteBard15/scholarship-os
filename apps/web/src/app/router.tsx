@@ -13,6 +13,7 @@ import { ResearchDetailPage } from "../pages/ResearchDetailPage";
 import { ResearchPage } from "../pages/ResearchPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { WritingLibraryPage } from "../pages/WritingLibraryPage";
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
   {
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           },
           { path: "/research", element: <ResearchPage /> },
           { path: "/research/:id", element: <ResearchDetailPage /> },
+          { path: "/writing", element: <WritingLibraryPage /> },
           {
             path: "/information-requests",
             element: <InformationRequestsPage />,

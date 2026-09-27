@@ -94,18 +94,29 @@ func (f *fakeRepository) ListProposals(_ context.Context, userID *uuid.UUID, sta
 	}
 	return []ApplicationProposal{*f.proposal}, nil
 }
+func (f *fakeRepository) ListProposalSources(context.Context, uuid.UUID) ([]ProposalSourceRecord, error) {
+	return []ProposalSourceRecord{}, nil
+}
 func (f *fakeRepository) UpdateProposal(_ context.Context, proposal *ApplicationProposal, task *ResearchTask, _ AgentActivity) error {
 	f.proposal = proposal
 	f.tasks[task.ID] = task
 	return nil
 }
-func (f *fakeRepository) ApproveProposal(_ context.Context, proposal *ApplicationProposal, task *ResearchTask, parent *profile.ApplicantProfile) (*application.Application, error) {
+func (f *fakeRepository) ApproveProposalReview(_ context.Context, proposal *ApplicationProposal, task *ResearchTask, parent *profile.ApplicantProfile, now time.Time) error {
 	if f.approved {
-		return nil, ErrInvalidProposalState
+		return ErrInvalidProposalState
 	}
 	f.approved = true
-	proposal.Status, task.Status = "approved", "completed"
-	return &application.Application{Base: application.Base{ID: uuid.New()}, UserID: proposal.UserID, ApplicantProfileID: uuid.New(), Name: proposal.Name}, nil
+	proposal.Status, proposal.ParentProfileID, proposal.ReviewedAt, task.Status = "approved", &parent.ID, &now, "review_required"
+	return nil
+}
+func (f *fakeRepository) CreateApplicationFromProposal(_ context.Context, proposal *ApplicationProposal, task *ResearchTask, _ *profile.ApplicantProfile) (*application.Application, error) {
+	if proposal.Status != "approved" || proposal.ApplicationID != nil {
+		return nil, ErrInvalidProposalState
+	}
+	created := &application.Application{Base: application.Base{ID: uuid.New()}, UserID: proposal.UserID, ApplicantProfileID: uuid.New(), Name: proposal.Name}
+	proposal.ApplicationID, task.Status = &created.ID, "completed"
+	return created, nil
 }
 func (f *fakeRepository) FindOpenInformationRequest(_ context.Context, candidate InformationRequest) (*InformationRequest, error) {
 	if f.info != nil && f.info.Status != "completed" {
@@ -271,12 +282,12 @@ func TestProposalRequiresHumanApprovalAndCannotApproveTwice(t *testing.T) {
 	repo.proposal = &ApplicationProposal{Base: Base{ID: uuid.New()}, UserID: userID, ResearchTaskID: task.ID, Name: "Example", Status: "pending"}
 	parent := &profile.ApplicantProfile{Base: profile.Base{ID: parentID}, UserID: userID, ProfileType: profile.ProfileTypeMaster}
 	service := newTestService(repo, userID, &fakeApplications{}, &fakeProfiles{item: parent})
-	created, err := service.ApproveProposal(ctx, repo.proposal.ID, ApproveProposalRequest{ParentProfileID: parentID})
+	approved, err := service.ApproveProposal(ctx, repo.proposal.ID, ApproveProposalRequest{ParentProfileID: parentID})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if created.ID == uuid.Nil || !repo.approved {
-		t.Fatal("approval did not create application")
+	if approved.Status != "approved" || approved.ApplicationID != nil || !repo.approved {
+		t.Fatal("approval should only queue the proposal for agent processing")
 	}
 	if _, err = service.ApproveProposal(ctx, repo.proposal.ID, ApproveProposalRequest{ParentProfileID: parentID}); !errors.Is(err, ErrInvalidProposalState) {
 		t.Fatalf("second approval error = %v", err)

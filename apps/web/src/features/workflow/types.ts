@@ -97,12 +97,16 @@ export interface ApplicationProposal {
   userId: string;
   researchTaskId: string;
   researchRunId?: string;
+  parentProfileId?: string;
+  applicationId?: string;
   name: string;
   country?: string;
   intake?: string;
   intakeYear?: number;
   summary?: string;
   status: "pending" | "approved" | "rejected" | "superseded";
+  priority: "highest" | "high" | "medium" | "low";
+  rank?: number;
   confidence?: number;
   reasoningSummary?: string;
   proposedInstitution?: {

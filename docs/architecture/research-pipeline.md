@@ -1,6 +1,6 @@
 # Research pipeline
 
-Research starts from a user-owned `ResearchTask` before any Application exists. An authenticated external agent polls and claims queued tasks, reads their links and instructions, and persists sources and findings through typed APIs on a task-owned Research Run. Opportunity discovery produces a pending Application Proposal and stops at the human approval boundary. Only approval creates the Application and links the retained research provenance.
+Research starts from a user-owned `ResearchTask` before any Application exists. An authenticated external agent polls and claims queued tasks, reads their links and instructions, and persists sources and findings through typed APIs on a task-owned Research Run. Opportunity discovery produces a pending Application Proposal and stops at the human approval boundary. Human approval records intent and the selected parent profile. A separate authenticated application-agent operation creates the Application and links the retained research provenance.
 
 ```text
 Application

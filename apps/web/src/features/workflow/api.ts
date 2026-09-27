@@ -80,10 +80,9 @@ export const attachTaskContexts = (id: string, researchContextIds: string[]) =>
     { method: "POST", body: JSON.stringify({ researchContextIds }) },
   );
 export const detachTaskContext = (taskId: string, contextId: string) =>
-  requestJSON<void>(
-    `/api/v1/research-tasks/${taskId}/contexts/${contextId}`,
-    { method: "DELETE" },
-  );
+  requestJSON<void>(`/api/v1/research-tasks/${taskId}/contexts/${contextId}`, {
+    method: "DELETE",
+  });
 export const listTaskLinks = (id: string) =>
   getJSON<Collection<ResearchTaskLink>>(`/api/v1/research-tasks/${id}/links`);
 export const listResearchContexts = (userId?: string) =>
@@ -100,9 +99,7 @@ export const createResearchContext = (input: {
     body: JSON.stringify(input),
   });
 export const listTaskContexts = (id: string) =>
-  getJSON<Collection<ResearchContext>>(
-    `/api/v1/research-tasks/${id}/contexts`,
-  );
+  getJSON<Collection<ResearchContext>>(`/api/v1/research-tasks/${id}/contexts`);
 export const listTaskOutputs = (id: string) =>
   getJSON<Collection<ResearchTaskOutput>>(
     `/api/v1/research-tasks/${id}/outputs`,
@@ -125,7 +122,7 @@ export const listProposals = (userId?: string) =>
 export const getProposal = (id: string) =>
   getJSON<Envelope<ApplicationProposal>>(`/api/v1/application-proposals/${id}`);
 export const approveProposal = (id: string, parentProfileId: string) =>
-  requestJSON<Envelope<{ id: string }>>(
+  requestJSON<Envelope<ApplicationProposal>>(
     `/api/v1/application-proposals/${id}/approve`,
     { method: "POST", body: JSON.stringify({ parentProfileId }) },
   );

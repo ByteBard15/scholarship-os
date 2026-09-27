@@ -415,7 +415,7 @@ func (s *Service) buildResearchPersistence(task *ResearchTask, run *application.
 		}
 	}
 	for _, candidate := range result.ApplicationProposals {
-		proposal := ApplicationProposal{Base: Base{ID: uuid.New()}, UserID: task.UserID, ResearchTaskID: task.ID, ResearchRunID: &run.ID, InstitutionID: candidate.InstitutionID, ProgrammeID: candidate.ProgrammeID, ScholarshipID: candidate.ScholarshipID, Name: candidate.Name, Country: candidate.Country, Intake: candidate.Intake, IntakeYear: candidate.IntakeYear, Summary: candidate.Summary, Status: "pending", Confidence: candidate.Confidence, ReasoningSummary: candidate.ReasoningSummary}
+		proposal := ApplicationProposal{Base: Base{ID: uuid.New()}, UserID: task.UserID, ResearchTaskID: task.ID, ResearchRunID: &run.ID, InstitutionID: candidate.InstitutionID, ProgrammeID: candidate.ProgrammeID, ScholarshipID: candidate.ScholarshipID, Name: candidate.Name, Country: candidate.Country, Intake: candidate.Intake, IntakeYear: candidate.IntakeYear, Summary: candidate.Summary, Status: "pending", Priority: proposalPriority(candidate.Priority), Rank: candidate.Rank, Confidence: candidate.Confidence, ReasoningSummary: candidate.ReasoningSummary}
 		if candidate.ProposedInstitution != nil {
 			payload, _ := json.Marshal(candidate.ProposedInstitution)
 			proposal.ProposedInstitution = profile.JSON(payload)
@@ -577,7 +577,7 @@ func (s *Service) CreateAgentApplicationProposal(ctx context.Context, taskID uui
 	if err != nil {
 		return nil, err
 	}
-	value := &ApplicationProposal{Base: Base{ID: uuid.New()}, UserID: task.UserID, ResearchTaskID: task.ID, ResearchRunID: &run.ID, InstitutionID: request.InstitutionID, ProgrammeID: request.ProgrammeID, ScholarshipID: request.ScholarshipID, ProposedInstitution: profile.JSON(request.ProposedInstitution), ProposedProgramme: profile.JSON(request.ProposedProgramme), ProposedScholarship: profile.JSON(request.ProposedScholarship), Name: strings.TrimSpace(request.Name), Country: request.Country, Intake: request.Intake, IntakeYear: request.IntakeYear, Summary: request.Summary, Status: "pending", Confidence: request.Confidence, ReasoningSummary: request.ReasoningSummary}
+	value := &ApplicationProposal{Base: Base{ID: uuid.New()}, UserID: task.UserID, ResearchTaskID: task.ID, ResearchRunID: &run.ID, InstitutionID: request.InstitutionID, ProgrammeID: request.ProgrammeID, ScholarshipID: request.ScholarshipID, ProposedInstitution: profile.JSON(request.ProposedInstitution), ProposedProgramme: profile.JSON(request.ProposedProgramme), ProposedScholarship: profile.JSON(request.ProposedScholarship), Name: strings.TrimSpace(request.Name), Country: request.Country, Intake: request.Intake, IntakeYear: request.IntakeYear, Summary: request.Summary, Status: "pending", Priority: proposalPriority(request.Priority), Rank: request.Rank, Confidence: request.Confidence, ReasoningSummary: request.ReasoningSummary}
 	sources, err := s.repo.ListRunSources(ctx, run.ID)
 	if err != nil {
 		return nil, err
@@ -683,7 +683,7 @@ func (s *Service) GetProposal(ctx context.Context, id uuid.UUID) (*ApplicationPr
 	return &response, nil
 }
 
-func (s *Service) ApproveProposal(ctx context.Context, id uuid.UUID, request ApproveProposalRequest) (*application.Application, error) {
+func (s *Service) ApproveProposal(ctx context.Context, id uuid.UUID, request ApproveProposalRequest) (*ApplicationProposalResponse, error) {
 	proposal, err := s.repo.GetProposal(ctx, id)
 	if err != nil {
 		return nil, err
@@ -705,9 +705,58 @@ func (s *Service) ApproveProposal(ctx context.Context, id uuid.UUID, request App
 	if err != nil {
 		return nil, err
 	}
-	created, err := s.repo.ApproveProposal(ctx, proposal, task, parent)
+	if err := s.repo.ApproveProposalReview(ctx, proposal, task, parent, s.now()); err != nil {
+		return nil, err
+	}
+	sources, err := s.repo.ListProposalSources(ctx, proposal.ID)
+	if err != nil {
+		return nil, err
+	}
+	response := proposalResponse(proposal, sources)
+	appLogger.Info(ctx, "application proposal approved for agent processing", "proposal_id", id)
+	return &response, nil
+}
+
+func (s *Service) ListApprovedProposalsForAgent(ctx context.Context) ([]ApplicationProposalResponse, error) {
+	status := "approved"
+	items, err := s.ListProposalResponses(ctx, nil, &status)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]ApplicationProposalResponse, 0, len(items))
+	for _, item := range items {
+		if item.ApplicationID == nil {
+			result = append(result, item)
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) CreateApplicationFromApprovedProposal(ctx context.Context, id uuid.UUID) (*application.Application, error) {
+	proposal, err := s.repo.GetProposal(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if principal.EnforceOwner(ctx, proposal.UserID) != nil {
+		return nil, ErrApplicationProposalNotFound
+	}
+	if proposal.Status != "approved" || proposal.ApplicationID != nil || proposal.ParentProfileID == nil {
+		return nil, ErrInvalidProposalState
+	}
+	parent, err := s.profiles.Get(ctx, *proposal.ParentProfileID)
+	if err != nil {
+		return nil, err
+	}
+	if parent.UserID != proposal.UserID || (parent.ProfileType != profile.ProfileTypeMaster && parent.ProfileType != profile.ProfileTypeDomain) {
+		return nil, ErrProposalParentRequired
+	}
+	task, err := s.repo.GetResearchTask(ctx, proposal.ResearchTaskID)
+	if err != nil {
+		return nil, err
+	}
+	created, err := s.repo.CreateApplicationFromProposal(ctx, proposal, task, parent)
 	if err == nil {
-		appLogger.Info(ctx, "application proposal approved", "proposal_id", id, "application_id", created.ID)
+		appLogger.Info(ctx, "agent created application from approved proposal", "proposal_id", id, "application_id", created.ID)
 	}
 	return created, err
 }
@@ -728,13 +777,13 @@ func (s *Service) ReviewProposal(ctx context.Context, id uuid.UUID, action strin
 			return nil, ErrInvalidProposalState
 		}
 		proposal.Status, proposal.ReviewedAt = "rejected", &now
-		others, listErr := s.repo.ListProposals(ctx, &proposal.UserID, stringPointer("pending"))
+		others, listErr := s.repo.ListProposals(ctx, &proposal.UserID, nil)
 		if listErr != nil {
 			return nil, listErr
 		}
 		remaining := false
 		for _, other := range others {
-			if other.ResearchTaskID == task.ID && other.ID != proposal.ID {
+			if other.ResearchTaskID == task.ID && other.ID != proposal.ID && (other.Status == "pending" || (other.Status == "approved" && other.ApplicationID == nil)) {
 				remaining = true
 				break
 			}
@@ -1185,4 +1234,13 @@ func (s *Service) ApplicationPreparation(ctx context.Context, applicationID uuid
 		return application.PreparationComponents{}, err
 	}
 	return application.PreparationComponents{FieldsCompleted: summary.FieldsCompleted, FieldsTotal: summary.FieldsTotal, QuestionnairesCompleted: summary.QuestionnairesCompleted, QuestionnairesTotal: summary.QuestionnairesTotal, PendingInformation: summary.PendingInformation, RequiredQuestionsAnswered: summary.RequiredQuestionsAnswered, RequiredQuestionsTotal: summary.RequiredQuestionsTotal}, nil
+}
+
+func proposalPriority(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "highest", "high", "medium", "low":
+		return strings.ToLower(strings.TrimSpace(value))
+	default:
+		return "medium"
+	}
 }

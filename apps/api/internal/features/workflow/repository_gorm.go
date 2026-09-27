@@ -371,7 +371,7 @@ func (r *GORMRepository) ListProposals(ctx context.Context, userID *uuid.UUID, s
 	if status != nil {
 		query = query.Where("status = ?", *status)
 	}
-	err = query.Order("created_at DESC").Find(&items).Error
+	err = query.Order("CASE priority WHEN 'highest' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END").Order("rank ASC NULLS LAST").Order("created_at ASC").Find(&items).Error
 	return
 }
 
@@ -414,14 +414,40 @@ func (r *GORMRepository) UpdateProposal(ctx context.Context, proposal *Applicati
 	})
 }
 
-func (r *GORMRepository) ApproveProposal(ctx context.Context, proposal *ApplicationProposal, task *ResearchTask, parent *profile.ApplicantProfile) (*application.Application, error) {
+func (r *GORMRepository) ApproveProposalReview(ctx context.Context, proposal *ApplicationProposal, task *ResearchTask, parent *profile.ApplicantProfile, now time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var locked ApplicationProposal
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&locked, "id = ?", proposal.ID).Error; err != nil {
+			return err
+		}
+		if locked.Status != "pending" {
+			return ErrInvalidProposalState
+		}
+		locked.Status, locked.ReviewedAt, locked.ParentProfileID = "approved", &now, &parent.ID
+		if err := tx.Save(&locked).Error; err != nil {
+			return err
+		}
+		task.Status, task.CompletedAt = "review_required", nil
+		if err := tx.Save(task).Error; err != nil {
+			return err
+		}
+		activity := AgentActivity{ResearchTaskID: &task.ID, ActivityType: "proposal_approved", Summary: "Human approved the application proposal for agent processing."}
+		if err := tx.Create(&activity).Error; err != nil {
+			return err
+		}
+		*proposal = locked
+		return nil
+	})
+}
+
+func (r *GORMRepository) CreateApplicationFromProposal(ctx context.Context, proposal *ApplicationProposal, task *ResearchTask, parent *profile.ApplicantProfile) (*application.Application, error) {
 	var created application.Application
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var locked ApplicationProposal
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&locked, "id = ?", proposal.ID).Error; err != nil {
 			return err
 		}
-		if locked.Status != "pending" {
+		if locked.Status != "approved" || locked.ApplicationID != nil || locked.ParentProfileID == nil || *locked.ParentProfileID != parent.ID {
 			return ErrInvalidProposalState
 		}
 		institutionID, err := resolveInstitution(tx, &locked)
@@ -463,12 +489,12 @@ func (r *GORMRepository) ApproveProposal(ctx context.Context, proposal *Applicat
 			}
 		}
 		now := time.Now().UTC()
-		locked.Status, locked.ReviewedAt = "approved", &now
+		locked.ApplicationID = &created.ID
 		if err = tx.Save(&locked).Error; err != nil {
 			return err
 		}
 		var remaining int64
-		if err = tx.Model(&ApplicationProposal{}).Where("research_task_id = ? AND id <> ? AND status = ?", task.ID, locked.ID, "pending").Count(&remaining).Error; err != nil {
+		if err = tx.Model(&ApplicationProposal{}).Where("research_task_id = ? AND id <> ? AND (status = ? OR (status = ? AND application_id IS NULL))", task.ID, locked.ID, "pending", "approved").Count(&remaining).Error; err != nil {
 			return err
 		}
 		if remaining == 0 {
@@ -484,12 +510,16 @@ func (r *GORMRepository) ApproveProposal(ctx context.Context, proposal *Applicat
 			return err
 		}
 		entityType := "application"
-		audit := profile.AuditLog{UserID: &locked.UserID, ProfileID: &applicationProfile.ID, Action: "application.proposal.approved", EntityType: &entityType, EntityID: &created.ID}
+		audit := profile.AuditLog{UserID: &locked.UserID, ProfileID: &applicationProfile.ID, Action: "application.created_from_approved_proposal", EntityType: &entityType, EntityID: &created.ID}
 		if err = tx.Create(&audit).Error; err != nil {
 			return err
 		}
-		activities := []AgentActivity{{ResearchTaskID: &task.ID, ApplicationID: &created.ID, ActivityType: "proposal_approved", Summary: "Human approved the application proposal."}, {ResearchTaskID: &task.ID, ApplicationID: &created.ID, ActivityType: "application_created", Summary: "Application and isolated Application Profile created from approved proposal."}}
-		return tx.Create(&activities).Error
+		activity := AgentActivity{ResearchTaskID: &task.ID, ApplicationID: &created.ID, ActivityType: "application_created", Summary: "Authenticated agent created the Application and isolated Application Profile from an approved proposal."}
+		if err := tx.Create(&activity).Error; err != nil {
+			return err
+		}
+		*proposal = locked
+		return nil
 	})
 	return &created, err
 }

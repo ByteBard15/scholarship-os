@@ -65,7 +65,8 @@ type Repository interface {
 	GetProposal(context.Context, uuid.UUID) (*ApplicationProposal, error)
 	ListProposalSources(context.Context, uuid.UUID) ([]ProposalSourceRecord, error)
 	UpdateProposal(context.Context, *ApplicationProposal, *ResearchTask, AgentActivity) error
-	ApproveProposal(context.Context, *ApplicationProposal, *ResearchTask, *profile.ApplicantProfile) (*application.Application, error)
+	ApproveProposalReview(context.Context, *ApplicationProposal, *ResearchTask, *profile.ApplicantProfile, time.Time) error
+	CreateApplicationFromProposal(context.Context, *ApplicationProposal, *ResearchTask, *profile.ApplicantProfile) (*application.Application, error)
 
 	ListFields(context.Context, uuid.UUID) ([]ApplicationField, error)
 	GetField(context.Context, uuid.UUID, uuid.UUID) (*ApplicationField, error)
