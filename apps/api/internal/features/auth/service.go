@@ -98,6 +98,7 @@ func (s *Service) Login(ctx context.Context, request LoginRequest) (*LoginRespon
 }
 
 func (s *Service) Authenticate(ctx context.Context, token string) (principal.Principal, error) {
+	token = normalizeBearerToken(token)
 	switch {
 	case strings.HasPrefix(token, "sys_"):
 		if s.systemKey == "" || !constantTimeEqual(token, s.systemKey) {
@@ -111,6 +112,10 @@ func (s *Service) Authenticate(ctx context.Context, token string) (principal.Pri
 	default:
 		return principal.Principal{}, ErrInvalidToken
 	}
+}
+
+func normalizeBearerToken(token string) string {
+	return strings.Trim(strings.TrimSpace(token), `"'`)
 }
 
 func (s *Service) authenticateSession(ctx context.Context, token string) (principal.Principal, error) {
