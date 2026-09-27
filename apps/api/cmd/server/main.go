@@ -44,6 +44,8 @@ func main() {
 		log.Error("access database pool", "error", err)
 		os.Exit(1)
 	}
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	sqlDB.SetConnMaxIdleTime(5 * time.Minute)
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
 			log.Error("close database", "error", err)
