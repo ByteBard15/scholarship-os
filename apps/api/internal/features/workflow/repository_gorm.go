@@ -165,6 +165,32 @@ func (r *GORMRepository) DeleteResearchTask(ctx context.Context, task *ResearchT
 	return r.db.WithContext(ctx).Delete(task).Error
 }
 
+func (r *GORMRepository) ResetResearchTaskResearch(ctx context.Context, task *ResearchTask) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		proposals := tx.Model(&ApplicationProposal{}).Select("id").Where("research_task_id = ?", task.ID)
+		if err := tx.Where("application_proposal_id IN (?)", proposals).Delete(&ApplicationProposalSource{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("research_task_id = ?", task.ID).Delete(&ApplicationProposal{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("research_task_id = ?", task.ID).Delete(&ResearchTaskOutput{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("research_task_id = ?", task.ID).Delete(&AgentActivity{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("research_task_id = ?", task.ID).Delete(&application.ResearchRun{}).Error; err != nil {
+			return err
+		}
+		activity := AgentActivity{ID: uuid.New(), ResearchTaskID: &task.ID, ApplicationID: task.TargetApplicationID, ActivityType: "research_restarted", Summary: "Previous research artifacts were cleared so the task can be researched again."}
+		if err := tx.Create(&activity).Error; err != nil {
+			return err
+		}
+		return tx.Save(task).Error
+	})
+}
+
 func (r *GORMRepository) ListTaskLinks(ctx context.Context, taskID uuid.UUID) (items []ResearchTaskLink, err error) {
 	err = r.db.WithContext(ctx).Where("research_task_id = ?", taskID).Order("created_at").Find(&items).Error
 	return

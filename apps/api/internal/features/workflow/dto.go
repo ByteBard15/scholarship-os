@@ -24,6 +24,55 @@ type CreateResearchTaskRequest struct {
 	NewResearchContexts []NewResearchContextRequest `json:"newResearchContexts" validate:"dive"`
 }
 
+type ImportResearchTasksRequest struct {
+	Format  string                      `json:"format"`
+	Version int                         `json:"version"`
+	UserID  uuid.UUID                   `json:"userId"`
+	Queue   bool                        `json:"queue"`
+	Tasks   []ImportResearchTaskRequest `json:"tasks" validate:"required,min=1,dive"`
+}
+
+type ImportResearchTaskRequest struct {
+	ParentTaskID        *uuid.UUID                  `json:"parentTaskId"`
+	TargetApplicationID *uuid.UUID                  `json:"targetApplicationId"`
+	ProfileID           *uuid.UUID                  `json:"profileId"`
+	Title               string                      `json:"title" validate:"required,max=250"`
+	Description         *string                     `json:"description"`
+	Instructions        *string                     `json:"instructions"`
+	TaskType            string                      `json:"taskType" validate:"required"`
+	Priority            *string                     `json:"priority" validate:"omitempty,oneof=low normal high urgent"`
+	DueAt               *time.Time                  `json:"dueAt"`
+	ResearchConfig      json.RawMessage             `json:"researchConfig"`
+	Links               []TaskLinkRequest           `json:"links" validate:"dive"`
+	ResearchContextIDs  []uuid.UUID                 `json:"researchContextIds" validate:"dive,required"`
+	NewResearchContexts []NewResearchContextRequest `json:"researchContexts" validate:"dive"`
+}
+
+type ExportResearchTasksResponse struct {
+	Format  string                     `json:"format"`
+	Version int                        `json:"version"`
+	Tasks   []ExportResearchTaskRecord `json:"tasks"`
+}
+
+type ExportResearchTaskRecord struct {
+	ParentTaskID        *uuid.UUID                  `json:"parentTaskId,omitempty"`
+	TargetApplicationID *uuid.UUID                  `json:"targetApplicationId,omitempty"`
+	ProfileID           *uuid.UUID                  `json:"profileId,omitempty"`
+	Title               string                      `json:"title"`
+	Description         *string                     `json:"description,omitempty"`
+	Instructions        *string                     `json:"instructions,omitempty"`
+	TaskType            string                      `json:"taskType"`
+	Priority            *string                     `json:"priority,omitempty"`
+	DueAt               *time.Time                  `json:"dueAt,omitempty"`
+	ResearchConfig      json.RawMessage             `json:"researchConfig,omitempty"`
+	Links               []TaskLinkRequest           `json:"links"`
+	ResearchContexts    []NewResearchContextRequest `json:"researchContexts"`
+}
+
+type RestartResearchTaskRequest struct {
+	Status string `json:"status" validate:"omitempty,oneof=draft queued"`
+}
+
 type NewResearchContextRequest struct {
 	Question string `json:"question" validate:"required,max=2000"`
 	Answer   string `json:"answer" validate:"required,max=20000"`

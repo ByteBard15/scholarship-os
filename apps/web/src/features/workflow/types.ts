@@ -41,6 +41,27 @@ export interface ResearchTaskLink {
   linkType?: string;
 }
 
+export interface ResearchTaskExportRecord {
+  parentTaskId?: string;
+  targetApplicationId?: string;
+  profileId?: string;
+  title: string;
+  description?: string;
+  instructions?: string;
+  taskType: string;
+  priority?: string;
+  dueAt?: string;
+  researchConfig?: unknown;
+  links: Array<{ label?: string; url: string; linkType?: string }>;
+  researchContexts: Array<{ question: string; answer: string }>;
+}
+
+export interface ResearchTaskExport {
+  format: "scholarship-os.research-tasks";
+  version: number;
+  tasks: ResearchTaskExportRecord[];
+}
+
 export interface ResearchContext {
   id: string;
   userId: string;

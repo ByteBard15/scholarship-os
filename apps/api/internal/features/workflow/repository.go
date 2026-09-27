@@ -36,6 +36,7 @@ type Repository interface {
 	GetResearchTask(context.Context, uuid.UUID) (*ResearchTask, error)
 	UpdateResearchTask(context.Context, *ResearchTask) error
 	DeleteResearchTask(context.Context, *ResearchTask) error
+	ResetResearchTaskResearch(context.Context, *ResearchTask) error
 	ListTaskLinks(context.Context, uuid.UUID) ([]ResearchTaskLink, error)
 	GetTaskLink(context.Context, uuid.UUID, uuid.UUID) (*ResearchTaskLink, error)
 	CreateTaskLink(context.Context, *ResearchTaskLink) error

@@ -76,6 +76,83 @@ func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearch
 	return task, nil
 }
 
+func (s *Service) ImportResearchTasks(ctx context.Context, request ImportResearchTasksRequest) ([]ResearchTask, error) {
+	userID := request.UserID
+	if userID == uuid.Nil {
+		actor, ok := principal.PrincipalFromContext(ctx)
+		if !ok || actor.UserID == nil {
+			return nil, validationError("userId is required")
+		}
+		userID = *actor.UserID
+	}
+	result := make([]ResearchTask, 0, len(request.Tasks))
+	for _, item := range request.Tasks {
+		task, err := s.CreateResearchTask(ctx, CreateResearchTaskRequest{
+			UserID:              userID,
+			ParentTaskID:        item.ParentTaskID,
+			TargetApplicationID: item.TargetApplicationID,
+			ProfileID:           item.ProfileID,
+			Title:               item.Title,
+			Description:         item.Description,
+			Instructions:        item.Instructions,
+			TaskType:            item.TaskType,
+			Priority:            item.Priority,
+			DueAt:               item.DueAt,
+			ResearchConfig:      item.ResearchConfig,
+			Links:               item.Links,
+			ResearchContextIDs:  item.ResearchContextIDs,
+			NewResearchContexts: item.NewResearchContexts,
+		}, request.Queue)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *task)
+	}
+	return result, nil
+}
+
+func (s *Service) ExportResearchTasks(ctx context.Context, filters ResearchTaskFilters) (*ExportResearchTasksResponse, error) {
+	tasks, err := s.ListResearchTasks(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
+	records := make([]ExportResearchTaskRecord, 0, len(tasks))
+	for i := range tasks {
+		task := &tasks[i]
+		links, err := s.repo.ListTaskLinks(ctx, task.ID)
+		if err != nil {
+			return nil, err
+		}
+		contexts, err := s.repo.ListTaskContexts(ctx, task.ID)
+		if err != nil {
+			return nil, err
+		}
+		exportLinks := make([]TaskLinkRequest, len(links))
+		for i := range links {
+			exportLinks[i] = TaskLinkRequest{Label: links[i].Label, URL: links[i].URL, LinkType: links[i].LinkType}
+		}
+		exportContexts := make([]NewResearchContextRequest, len(contexts))
+		for i := range contexts {
+			exportContexts[i] = NewResearchContextRequest{Question: contexts[i].Question, Answer: contexts[i].Answer}
+		}
+		records = append(records, ExportResearchTaskRecord{
+			ParentTaskID:        task.ParentTaskID,
+			TargetApplicationID: task.TargetApplicationID,
+			ProfileID:           task.ProfileID,
+			Title:               task.Title,
+			Description:         task.Description,
+			Instructions:        task.Instructions,
+			TaskType:            task.TaskType,
+			Priority:            task.Priority,
+			DueAt:               utcTime(task.DueAt),
+			ResearchConfig:      json.RawMessage(task.ResearchConfig),
+			Links:               exportLinks,
+			ResearchContexts:    exportContexts,
+		})
+	}
+	return &ExportResearchTasksResponse{Format: "scholarship-os.research-tasks", Version: 1, Tasks: records}, nil
+}
+
 func (s *Service) validateResearchContextOwnership(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) error {
 	for _, id := range ids {
 		item, err := s.repo.GetResearchContext(ctx, id)
@@ -329,6 +406,32 @@ func (s *Service) TransitionResearchTask(ctx context.Context, id uuid.UUID, acti
 		return nil, ErrInvalidResearchTaskState
 	}
 	return task, s.repo.UpdateResearchTask(ctx, task)
+}
+
+func (s *Service) RestartResearchTask(ctx context.Context, id uuid.UUID, request RestartResearchTaskRequest) (*ResearchTask, error) {
+	task, err := s.repo.GetResearchTask(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if principal.EnforceOwner(ctx, task.UserID) != nil {
+		return nil, ErrResearchTaskNotFound
+	}
+	status := strings.TrimSpace(request.Status)
+	if status == "" {
+		status = "queued"
+	}
+	if status == "queued" && task.ProfileID == nil {
+		return nil, validationError("profileId is required before a research task can be queued")
+	}
+	if status != "draft" && status != "queued" {
+		return nil, ErrInvalidResearchTaskState
+	}
+	task.Status = status
+	task.StartedAt, task.CompletedAt, task.FailedAt, task.FailureReason = nil, nil, nil, nil
+	if err := s.repo.ResetResearchTaskResearch(ctx, task); err != nil {
+		return nil, err
+	}
+	return task, nil
 }
 
 func (s *Service) StartResearchTask(ctx context.Context, id uuid.UUID) (*ResearchTask, *application.ResearchRun, error) {

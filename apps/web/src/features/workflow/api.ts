@@ -10,6 +10,7 @@ import type {
   Questionnaire,
   ResearchFinding,
   ResearchContext,
+  ResearchTaskExport,
   ResearchRun,
   ResearchSource,
   ResearchTask,
@@ -50,6 +51,28 @@ export const createResearchTask = (
     `/api/v1/research-tasks${queue ? "?queue=true" : ""}`,
     { method: "POST", body: JSON.stringify(input) },
   );
+export const importResearchTasks = (input: {
+  userId: string;
+  queue?: boolean;
+  tasks: Array<{
+    title: string;
+    description?: string;
+    instructions?: string;
+    taskType: string;
+    priority?: string;
+    targetApplicationId?: string;
+    profileId?: string;
+    links?: Array<{ label?: string; url: string; linkType?: string }>;
+    researchContextIds?: string[];
+    researchContexts?: Array<{ question: string; answer: string }>;
+  }>;
+}) =>
+  requestJSON<Collection<ResearchTask>>("/api/v1/research-tasks/import", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+export const exportResearchTasks = (query = "") =>
+  getJSON<Envelope<ResearchTaskExport>>(`/api/v1/research-tasks/export${query}`);
 export const transitionResearchTask = (
   id: string,
   action: "queue" | "cancel" | "retry",
@@ -58,6 +81,11 @@ export const transitionResearchTask = (
     `/api/v1/research-tasks/${id}/${action}`,
     { method: "POST" },
   );
+export const restartResearchTask = (id: string, status: "draft" | "queued") =>
+  requestJSON<Envelope<ResearchTask>>(`/api/v1/research-tasks/${id}/restart`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
 export const updateResearchTask = (
   id: string,
   input: {

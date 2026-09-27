@@ -60,6 +60,33 @@ func (h *Handler) CreateResearchTask(w http.ResponseWriter, r *http.Request) {
 	response.Data(w, 201, researchTaskResponse(task))
 }
 
+func (h *Handler) ImportResearchTasks(w http.ResponseWriter, r *http.Request) {
+	var request ImportResearchTasksRequest
+	if !h.decode(w, r, &request) {
+		return
+	}
+	items, err := h.service.ImportResearchTasks(r.Context(), request)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchTaskResponses(items)
+	response.Collection(w, result, len(result))
+}
+
+func (h *Handler) ExportResearchTasks(w http.ResponseWriter, r *http.Request) {
+	filters, ok := h.researchTaskFilters(w, r)
+	if !ok {
+		return
+	}
+	value, err := h.service.ExportResearchTasks(r.Context(), filters)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, http.StatusOK, value)
+}
+
 func researchContextResponse(item *ResearchContext) ResearchContextResponse {
 	return ResearchContextResponse{ID: item.ID, UserID: item.UserID, Question: item.Question, Answer: item.Answer, CreatedAt: item.CreatedAt.UTC(), UpdatedAt: item.UpdatedAt.UTC()}
 }
@@ -272,12 +299,26 @@ func (h *Handler) AgentCreateInformationRequest(w http.ResponseWriter, r *http.R
 	response.Data(w, http.StatusCreated, informationRequestResponse(value, nil))
 }
 func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
+	filters, ok := h.researchTaskFilters(w, r)
+	if !ok {
+		return
+	}
+	items, err := h.service.ListResearchTasks(r.Context(), filters)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	result := researchTaskResponses(items)
+	response.Collection(w, result, len(result))
+}
+
+func (h *Handler) researchTaskFilters(w http.ResponseWriter, r *http.Request) (ResearchTaskFilters, bool) {
 	filters := ResearchTaskFilters{}
 	if raw := r.URL.Query().Get("userId"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
 			response.Error(w, 400, "INVALID_USER_ID", "userId must be a UUID")
-			return
+			return ResearchTaskFilters{}, false
 		}
 		filters.UserID = &id
 	}
@@ -290,13 +331,26 @@ func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
 	if value := r.URL.Query().Get("priority"); value != "" {
 		filters.Priority = &value
 	}
-	items, err := h.service.ListResearchTasks(r.Context(), filters)
+	return filters, true
+}
+
+func (h *Handler) RestartResearchTask(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	var request RestartResearchTaskRequest
+	if r.Body != nil && r.ContentLength != 0 {
+		if !h.decode(w, r, &request) {
+			return
+		}
+	}
+	item, err := h.service.RestartResearchTask(r.Context(), id, request)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
-	result := researchTaskResponses(items)
-	response.Collection(w, result, len(result))
+	response.Data(w, http.StatusOK, researchTaskResponse(item))
 }
 func (h *Handler) PollResearchTasks(w http.ResponseWriter, r *http.Request) {
 	limit := 10

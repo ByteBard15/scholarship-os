@@ -1,7 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { createResearchTask, workflowKeys } from "../features/workflow/api";
+import {
+  createResearchTask,
+  exportResearchTasks,
+  importResearchTasks,
+  workflowKeys,
+} from "../features/workflow/api";
 import {
   useResearchContexts,
   useResearchTasks,
@@ -35,6 +40,9 @@ export function ResearchPage() {
   const [link, setLink] = useState("");
   const [profileId, setProfileId] = useState("");
   const [selectedContextIds, setSelectedContextIds] = useState<string[]>([]);
+  const [importText, setImportText] = useState("");
+  const [importQueue, setImportQueue] = useState(false);
+  const [importMessage, setImportMessage] = useState("");
   const [newContexts, setNewContexts] = useState([
     { question: "", answer: "" },
   ]);
@@ -68,6 +76,54 @@ export function ResearchPage() {
       void client.invalidateQueries({ queryKey: workflowKeys.all });
     },
   });
+  const importTasks = useMutation({
+    mutationFn: () => {
+      const parsed = JSON.parse(importText) as {
+        tasks?: Array<{
+          title: string;
+          description?: string;
+          instructions?: string;
+          taskType: string;
+          priority?: string;
+          targetApplicationId?: string;
+          profileId?: string;
+          links?: Array<{ label?: string; url: string; linkType?: string }>;
+          researchContexts?: Array<{ question: string; answer: string }>;
+          researchContextIds?: string[];
+        }>;
+      };
+      return importResearchTasks({
+        userId,
+        queue: importQueue,
+        tasks: (parsed.tasks ?? []).map((task) => ({
+          ...task,
+          researchContextIds: task.researchContextIds ?? [],
+          researchContexts: task.researchContexts ?? [],
+          links: task.links ?? [],
+        })),
+      });
+    },
+    onSuccess: (result) => {
+      setImportText("");
+      setImportMessage(`Imported ${result.meta.count} research task(s).`);
+      void client.invalidateQueries({ queryKey: workflowKeys.all });
+    },
+    onError: (error) => {
+      setImportMessage(error instanceof Error ? error.message : "Import failed");
+    },
+  });
+  async function downloadExport() {
+    const value = await exportResearchTasks(query ? `?${query}` : "");
+    const blob = new Blob([JSON.stringify(value.data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "research-tasks.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
   function submit(event: FormEvent) {
     event.preventDefault();
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
@@ -266,6 +322,51 @@ export function ResearchPage() {
           <p className="text-red-700 md:col-span-2">{create.error.message}</p>
         )}
       </form>
+      <section className="mt-6 rounded-lg border bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Import / Export</h2>
+            <p className="text-sm text-slate-600">
+              Bulk move research task definitions as JSON. Research results are
+              not included.
+            </p>
+          </div>
+          <button
+            className="rounded border px-3 py-2 text-sm"
+            onClick={() => void downloadExport()}
+            type="button"
+          >
+            Export current list
+          </button>
+        </div>
+        <textarea
+          className="mt-4 min-h-36 w-full rounded border px-3 py-2 font-mono text-sm"
+          placeholder='{"tasks":[{"title":"Example Scholarship 2027","taskType":"scholarship_research","profileId":"...","links":[{"url":"https://example.edu"}],"researchContexts":[{"question":"Course interests","answer":"Biomedical imaging"}]}]}'
+          value={importText}
+          onChange={(event) => setImportText(event.target.value)}
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              checked={importQueue}
+              onChange={(event) => setImportQueue(event.target.checked)}
+              type="checkbox"
+            />
+            Queue imported tasks
+          </label>
+          <button
+            className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+            disabled={!importText.trim() || importTasks.isPending}
+            onClick={() => importTasks.mutate()}
+            type="button"
+          >
+            Import tasks
+          </button>
+          {importMessage && (
+            <span className="text-sm text-slate-600">{importMessage}</span>
+          )}
+        </div>
+      </section>
       <div className="mt-6 flex flex-wrap gap-2">
         <select
           className="rounded border px-3 py-2"

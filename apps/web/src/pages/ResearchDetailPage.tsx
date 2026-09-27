@@ -5,6 +5,7 @@ import {
   approveProposal,
   detachTaskContext,
   reviewProposal,
+  restartResearchTask,
   transitionResearchTask,
   updateResearchTask,
   workflowKeys,
@@ -72,6 +73,10 @@ export function ResearchDetailPage() {
       transitionResearchTask(id, action),
     onSuccess: () => void refresh(),
   });
+  const restart = useMutation({
+    mutationFn: () => restartResearchTask(id, "queued"),
+    onSuccess: () => void refresh(),
+  });
   const approve = useMutation({
     mutationFn: (proposalId: string) => approveProposal(proposalId, parent),
     onSuccess: () => void refresh(),
@@ -135,7 +140,27 @@ export function ResearchDetailPage() {
             Cancel
           </button>
         )}
+        {!["draft", "queued", "running"].includes(item.status) && (
+          <button
+            className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 disabled:opacity-50"
+            disabled={restart.isPending}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Clear previous research results and queue this task again?",
+                )
+              ) {
+                restart.mutate();
+              }
+            }}
+          >
+            Restart fresh
+          </button>
+        )}
       </div>
+      {restart.isError && (
+        <p className="mt-2 text-sm text-red-700">{restart.error.message}</p>
+      )}
       {item.status === "draft" &&
         !contexts.isPending &&
         !taskContexts.isPending && (

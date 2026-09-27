@@ -11,6 +11,8 @@ import (
 func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.Get("/research-tasks", h.ListResearchTasks)
 	r.Post("/research-tasks", h.CreateResearchTask)
+	r.Get("/research-tasks/export", h.ExportResearchTasks)
+	r.Post("/research-tasks/import", h.ImportResearchTasks)
 	r.Get("/research-contexts", h.ListResearchContexts)
 	r.Post("/research-contexts", h.CreateResearchContext)
 	r.Patch("/research-contexts/{contextID}", h.UpdateResearchContext)
@@ -21,6 +23,7 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.ResearchTask("queue research task")).Post("/research-tasks/{taskID}/queue", h.transitionTask("queue"))
 	r.With(owners.ResearchTask("cancel research task")).Post("/research-tasks/{taskID}/cancel", h.transitionTask("cancel"))
 	r.With(owners.ResearchTask("retry research task")).Post("/research-tasks/{taskID}/retry", h.transitionTask("retry"))
+	r.With(owners.ResearchTask("restart research task")).Post("/research-tasks/{taskID}/restart", h.RestartResearchTask)
 	r.With(owners.ResearchTask("list research task outputs")).Get("/research-tasks/{taskID}/outputs", h.ListTaskOutputs)
 	r.With(owners.ResearchTask("list research task links")).Get("/research-tasks/{taskID}/links", h.ListTaskLinks)
 	r.With(owners.ResearchTask("list research task contexts")).Get("/research-tasks/{taskID}/contexts", h.ListTaskContexts)
