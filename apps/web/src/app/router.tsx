@@ -14,10 +14,12 @@ import { ResearchPage } from "../pages/ResearchPage";
 import { LoginPage } from "../pages/LoginPage";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { WritingLibraryPage } from "../pages/WritingLibraryPage";
+import { RouteErrorPage } from "../components/RouteErrorPage";
 export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
+  { path: "/login", element: <LoginPage />, errorElement: <RouteErrorPage /> },
   {
     element: <ProtectedRoute />,
+    errorElement: <RouteErrorPage />,
     children: [
       {
         element: <AppLayout />,

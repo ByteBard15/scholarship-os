@@ -51,6 +51,9 @@ export function WritingLibraryPage() {
     onSuccess: () =>
       void client.invalidateQueries({ queryKey: writingKeys.all }),
   });
+  const availableTagNames = (tags.data?.data ?? [])
+    .map((tag) => tag.name)
+    .join(", ");
 
   return (
     <section>
@@ -122,7 +125,7 @@ export function WritingLibraryPage() {
           />
           <span className="text-xs text-slate-500">
             Separate tags with commas. Existing tags:{" "}
-            {tags.data?.data.map((tag) => tag.name).join(", ") || "none"}.
+            {availableTagNames || "none"}.
           </span>
         </label>
         <label className="grid gap-1 text-sm md:col-span-2">
@@ -159,7 +162,7 @@ export function WritingLibraryPage() {
         <p className="mt-4 text-red-700">{samples.error.message}</p>
       )}
       <div className="mt-4 grid gap-4">
-        {samples.data?.data.map((sample) => (
+        {(samples.data?.data ?? []).map((sample) => (
           <article className="rounded-lg border bg-white p-5" key={sample.id}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -184,7 +187,7 @@ export function WritingLibraryPage() {
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
-              {sample.tags.map((tag) => (
+              {(sample.tags ?? []).map((tag) => (
                 <span
                   className="rounded-full bg-indigo-50 px-2 py-1 text-xs text-indigo-700"
                   key={tag.id}

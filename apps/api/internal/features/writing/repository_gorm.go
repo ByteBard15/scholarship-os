@@ -63,7 +63,7 @@ func (r *GORMRepository) ListSamples(ctx context.Context, userID uuid.UUID, filt
 	if len(filters.Statuses) > 0 {
 		query = query.Where("status IN ?", filters.Statuses)
 	}
-	var samples []WritingSample
+	samples := make([]WritingSample, 0)
 	return samples, query.Find(&samples).Error
 }
 
@@ -101,7 +101,7 @@ func (r *GORMRepository) CreateTag(ctx context.Context, tag *WritingTag) error {
 }
 
 func (r *GORMRepository) ListTags(ctx context.Context, userID uuid.UUID) ([]TagResponse, error) {
-	var tags []TagResponse
+	tags := make([]TagResponse, 0)
 	err := r.db.WithContext(ctx).Table("writing_tags AS t").
 		Select("t.id, t.name, COUNT(s.id) AS sample_count").
 		Joins("LEFT JOIN writing_sample_tags st ON st.writing_tag_id = t.id").
