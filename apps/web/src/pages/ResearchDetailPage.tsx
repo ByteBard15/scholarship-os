@@ -120,20 +120,23 @@ export function ResearchDetailPage() {
           </button>
         )}
       </div>
-      {item.status === "draft" && !contexts.isPending && !taskContexts.isPending && (
-        <DraftTaskEditor
-          contexts={contexts.data?.data ?? []}
-          item={item}
-          profiles={profiles.data?.data ?? []}
-          selectedContexts={taskContexts.data?.data ?? []}
-          onSaved={refresh}
-        />
-      )}
+      {item.status === "draft" &&
+        !contexts.isPending &&
+        !taskContexts.isPending && (
+          <DraftTaskEditor
+            contexts={contexts.data?.data ?? []}
+            item={item}
+            profiles={profiles.data?.data ?? []}
+            selectedContexts={taskContexts.data?.data ?? []}
+            onSaved={refresh}
+          />
+        )}
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <Panel title="Selected Profile">
           <p className="text-sm">
-            {profiles.data?.data.find((profile) => profile.id === item.profileId)?.name ??
-              "No profile selected"}
+            {profiles.data?.data.find(
+              (profile) => profile.id === item.profileId,
+            )?.name ?? "No profile selected"}
           </p>
         </Panel>
         <Panel title="Instructions">
@@ -195,14 +198,13 @@ export function ResearchDetailPage() {
             </a>
           ))}
           {findings.data?.data.map((finding) => (
-            <div key={finding.id} className="rounded border p-3 text-sm">
-              <strong>
-                {finding.category}: {finding.field}
-              </strong>
-              <p className="text-xs text-slate-500">
-                {finding.verificationStatus} · review {finding.reviewStatus}
-              </p>
-            </div>
+            <FindingCard
+              key={finding.id}
+              finding={finding}
+              source={sources.data?.data.find(
+                (source) => source.id === finding.sourceId,
+              )}
+            />
           ))}
         </div>
       </Panel>
@@ -228,12 +230,45 @@ export function ResearchDetailPage() {
                 <h3 className="font-medium">{proposal.name}</h3>
                 <span className="text-xs uppercase">{proposal.status}</span>
               </div>
-              <p className="mt-2 text-sm">
-                {proposal.proposedInstitution?.name ?? "Institution unknown"} ·{" "}
-                {proposal.proposedProgramme?.name ?? "Programme unknown"} ·{" "}
-                {proposal.proposedScholarship?.name ?? "Scholarship unknown"}
-              </p>
-              <p className="mt-2 text-sm text-slate-600">{proposal.summary}</p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <ProposalSection
+                  title="Institution"
+                  value={proposal.proposedInstitution}
+                />
+                <ProposalSection
+                  title="Programme"
+                  value={proposal.proposedProgramme}
+                />
+                <ProposalSection
+                  title="Scholarship & funding"
+                  value={proposal.proposedScholarship}
+                />
+              </div>
+              <dl className="mt-4 grid gap-3 rounded bg-slate-50 p-3 text-sm sm:grid-cols-3">
+                <SummaryItem label="Country" value={proposal.country} />
+                <SummaryItem label="Intake" value={proposal.intake} />
+                <SummaryItem label="Intake year" value={proposal.intakeYear} />
+              </dl>
+              {proposal.summary && (
+                <div className="mt-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Summary
+                  </h4>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                    {proposal.summary}
+                  </p>
+                </div>
+              )}
+              {proposal.reasoningSummary && (
+                <div className="mt-4">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Fit and review notes
+                  </h4>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                    {proposal.reasoningSummary}
+                  </p>
+                </div>
+              )}
               <p className="mt-2 text-xs text-slate-500">
                 Confidence:{" "}
                 {proposal.confidence == null
@@ -241,6 +276,30 @@ export function ResearchDetailPage() {
                   : `${Math.round(proposal.confidence * 100)}%`}{" "}
                 · {proposal.sources.length} provenance source(s)
               </p>
+              {proposal.sources.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Supporting sources
+                  </h4>
+                  <ul className="mt-1 grid gap-1">
+                    {proposal.sources.map((source) => (
+                      <li key={source.id} className="text-sm">
+                        <a
+                          className="text-indigo-700 hover:underline"
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {source.title ?? source.url}
+                        </a>{" "}
+                        <span className="text-xs text-slate-500">
+                          · {source.isOfficial ? "official" : "unofficial"}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div className="mt-3 flex gap-2">
                 {proposal.status === "pending" && (
                   <>
@@ -341,6 +400,164 @@ export function ResearchDetailPage() {
   );
 }
 
+function FindingCard({
+  finding,
+  source,
+}: {
+  finding: import("../features/workflow/types").ResearchFinding;
+  source?: import("../features/workflow/types").ResearchSource;
+}) {
+  return (
+    <article className="rounded border p-4 text-sm">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            {humanize(finding.category)}
+          </p>
+          <h3 className="font-medium">{humanize(finding.field)}</h3>
+        </div>
+        <div className="flex gap-1 text-xs">
+          <StatusBadge value={finding.verificationStatus} />
+          <StatusBadge value={`review ${finding.reviewStatus}`} />
+        </div>
+      </div>
+      <div className="mt-3 rounded bg-slate-50 p-3">
+        <StructuredValue value={finding.value} />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+        {finding.confidence != null && (
+          <span>Confidence: {Math.round(finding.confidence * 100)}%</span>
+        )}
+        {source && (
+          <a
+            className="text-indigo-700 hover:underline"
+            href={source.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Source: {source.title ?? source.url}
+            {source.isOfficial ? " (official)" : " (unofficial)"}
+          </a>
+        )}
+      </div>
+      {finding.rawText && (
+        <p className="mt-2 border-l-2 pl-3 text-xs italic text-slate-600">
+          {finding.rawText}
+        </p>
+      )}
+    </article>
+  );
+}
+
+function ProposalSection({
+  title,
+  value,
+}: {
+  title: string;
+  value?: Record<string, unknown>;
+}) {
+  return (
+    <section className="rounded border bg-slate-50 p-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </h4>
+      {value ? (
+        <div className="mt-2">
+          <StructuredValue value={value} />
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-slate-500">Not supplied</p>
+      )}
+    </section>
+  );
+}
+
+function StructuredValue({ value }: { value: unknown }) {
+  if (value === null || value === undefined || value === "") {
+    return <span className="text-slate-400">Unknown</span>;
+  }
+  if (typeof value === "boolean") return <span>{value ? "Yes" : "No"}</span>;
+  if (typeof value === "string" || typeof value === "number") {
+    const text = String(value);
+    if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+      return (
+        <a
+          className="break-all text-indigo-700 hover:underline"
+          href={value}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {value}
+        </a>
+      );
+    }
+    return <span className="whitespace-pre-wrap break-words">{text}</span>;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return <span className="text-slate-400">None</span>;
+    return (
+      <ul className="list-disc space-y-1 pl-5">
+        {value.map((item, index) => (
+          <li key={index}>
+            <StructuredValue value={item} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <dl className="grid gap-2">
+        {Object.entries(value as Record<string, unknown>).map(([key, item]) => (
+          <div
+            key={key}
+            className="grid gap-0.5 sm:grid-cols-[minmax(8rem,0.7fr)_1.5fr]"
+          >
+            <dt className="font-medium text-slate-600">{humanize(key)}</dt>
+            <dd className="min-w-0">
+              <StructuredValue value={item} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+  return <span>{String(value)}</span>;
+}
+
+function SummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | number;
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-0.5">{value ?? "Unknown"}</dd>
+    </div>
+  );
+}
+
+function StatusBadge({ value }: { value: string }) {
+  return (
+    <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-600">
+      {humanize(value)}
+    </span>
+  );
+}
+
+function humanize(value: string) {
+  return value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .replace(/^./, (letter) => letter.toUpperCase());
+}
+
 function DraftTaskEditor({
   item,
   profiles,
@@ -377,7 +594,9 @@ function DraftTaskEditor({
       const attached = new Set(selectedContexts.map((context) => context.id));
       const selected = new Set(contextIds);
       const additions = contextIds.filter((id) => !attached.has(id));
-      const removals = selectedContexts.filter((context) => !selected.has(context.id));
+      const removals = selectedContexts.filter(
+        (context) => !selected.has(context.id),
+      );
       if (additions.length) await attachTaskContexts(item.id, additions);
       await Promise.all(
         removals.map((context) => detachTaskContext(item.id, context.id)),
@@ -394,31 +613,79 @@ function DraftTaskEditor({
       }}
     >
       <h2 className="font-semibold md:col-span-2">Edit Draft Research Task</h2>
-      <input className="rounded border px-3 py-2 md:col-span-2" required value={title} onChange={(event) => setTitle(event.target.value)} />
-      <textarea className="rounded border px-3 py-2" placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)} />
-      <textarea className="rounded border px-3 py-2" placeholder="Instructions" value={instructions} onChange={(event) => setInstructions(event.target.value)} />
-      <select className="rounded border px-3 py-2" value={taskType} onChange={(event) => setTaskType(event.target.value)}>
+      <input
+        className="rounded border px-3 py-2 md:col-span-2"
+        required
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+      />
+      <textarea
+        className="rounded border px-3 py-2"
+        placeholder="Description"
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
+      />
+      <textarea
+        className="rounded border px-3 py-2"
+        placeholder="Instructions"
+        value={instructions}
+        onChange={(event) => setInstructions(event.target.value)}
+      />
+      <select
+        className="rounded border px-3 py-2"
+        value={taskType}
+        onChange={(event) => setTaskType(event.target.value)}
+      >
         <option value="scholarship_research">Scholarship research</option>
         <option value="scholarship_discovery">Scholarship discovery</option>
         <option value="programme_research">Programme research</option>
         <option value="funding_research">Funding research</option>
         <option value="general_research">General research</option>
       </select>
-      <select className="rounded border px-3 py-2" value={priority} onChange={(event) => setPriority(event.target.value)}>
-        <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+      <select
+        className="rounded border px-3 py-2"
+        value={priority}
+        onChange={(event) => setPriority(event.target.value)}
+      >
+        <option value="low">Low</option>
+        <option value="normal">Normal</option>
+        <option value="high">High</option>
+        <option value="urgent">Urgent</option>
       </select>
-      <label className="grid gap-1 text-sm md:col-span-2">Applicant profile
-        <select className="rounded border px-3 py-2" required value={profileId} onChange={(event) => setProfileId(event.target.value)}>
+      <label className="grid gap-1 text-sm md:col-span-2">
+        Applicant profile
+        <select
+          className="rounded border px-3 py-2"
+          required
+          value={profileId}
+          onChange={(event) => setProfileId(event.target.value)}
+        >
           <option value="">Select a profile</option>
-          {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} ({profile.profileType})</option>)}
+          {profiles.map((profile) => (
+            <option key={profile.id} value={profile.id}>
+              {profile.name} ({profile.profileType})
+            </option>
+          ))}
         </select>
       </label>
       <fieldset className="rounded border p-3 md:col-span-2">
-        <legend className="px-2 text-sm font-medium">Attached research context</legend>
+        <legend className="px-2 text-sm font-medium">
+          Attached research context
+        </legend>
         <div className="grid gap-2">
           {contexts.map((context) => (
             <label className="flex gap-2 text-sm" key={context.id}>
-              <input type="checkbox" checked={contextIds.includes(context.id)} onChange={(event) => setContextIds((current) => event.target.checked ? [...current, context.id] : current.filter((id) => id !== context.id))} />
+              <input
+                type="checkbox"
+                checked={contextIds.includes(context.id)}
+                onChange={(event) =>
+                  setContextIds((current) =>
+                    event.target.checked
+                      ? [...current, context.id]
+                      : current.filter((id) => id !== context.id),
+                  )
+                }
+              />
               <span>
                 <strong>{context.question}</strong>
                 <CollapsibleText className="mt-1 text-slate-500" lines={5}>
@@ -429,8 +696,18 @@ function DraftTaskEditor({
           ))}
         </div>
       </fieldset>
-      <button className="rounded bg-indigo-700 px-4 py-2 text-white md:col-span-2" disabled={save.isPending} type="submit">{save.isPending ? "Saving…" : "Save draft changes"}</button>
-      {save.isError && <p className="text-sm text-red-700 md:col-span-2">{save.error.message}</p>}
+      <button
+        className="rounded bg-indigo-700 px-4 py-2 text-white md:col-span-2"
+        disabled={save.isPending}
+        type="submit"
+      >
+        {save.isPending ? "Saving…" : "Save draft changes"}
+      </button>
+      {save.isError && (
+        <p className="text-sm text-red-700 md:col-span-2">
+          {save.error.message}
+        </p>
+      )}
     </form>
   );
 }

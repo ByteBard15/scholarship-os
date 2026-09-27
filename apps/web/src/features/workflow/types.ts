@@ -42,12 +42,12 @@ export interface ResearchTaskLink {
 }
 
 export interface ResearchContext {
-	id: string;
-	userId: string;
-	question: string;
-	answer: string;
-	createdAt: string;
-	updatedAt: string;
+  id: string;
+  userId: string;
+  question: string;
+  answer: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ResearchTaskOutput {
@@ -105,19 +105,40 @@ export interface ApplicationProposal {
   status: "pending" | "approved" | "rejected" | "superseded";
   confidence?: number;
   reasoningSummary?: string;
-  proposedInstitution?: { name: string; country: string; websiteUrl?: string };
+  proposedInstitution?: {
+    name: string;
+    shortName?: string;
+    institutionType?: string;
+    country: string;
+    city?: string;
+    websiteUrl?: string;
+  };
   proposedProgramme?: {
     name: string;
     degreeLevel?: string;
+    fieldOfStudy?: string;
+    faculty?: string;
+    department?: string;
+    durationMonths?: number;
+    mode?: string;
+    language?: string;
     programmeUrl?: string;
+    description?: string;
   };
   proposedScholarship?: {
     name: string;
+    providerName?: string;
+    description?: string;
+    country?: string;
+    degreeLevel?: string;
     officialUrl?: string;
     scholarshipType?: string;
+    isRecurring?: boolean;
   };
   sources: Array<{
     id: string;
+    researchSourceId?: string;
+    sourceRole?: string;
     url: string;
     title?: string;
     isOfficial: boolean;
