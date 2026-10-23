@@ -52,3 +52,22 @@ func TestResearchListingSQLFiltersOrdersAndPaginates(t *testing.T) {
 		t.Fatal(output.String())
 	}
 }
+
+func TestDeadlineQueryUsesLatestRunAndSourcedNonRejectedFindings(t *testing.T) {
+	var output bytes.Buffer
+	db, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=localhost user=test dbname=test sslmode=disable"}), &gorm.Config{DryRun: true, DisableAutomaticPing: true, Logger: logger.New(log.New(&output, "", 0), logger.Config{LogLevel: logger.Info})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := &GORMRepository{db: db}
+	id := uuid.New()
+	if _, err := repo.ListTaskDeadlineFindings(context.Background(), []uuid.UUID{id}); err != nil {
+		t.Fatal(err)
+	}
+	sql := output.String()
+	for _, want := range []string{"DISTINCT ON (research_task_id)", id.String(), "created_at DESC, id DESC", "JOIN research_sources", "sources.research_run_id = runs.id", "runs.status IN ('review_required','completed')", "findings.review_status <> 'rejected'"} {
+		if !strings.Contains(sql, want) {
+			t.Fatalf("deadline query missing %q: %s", want, sql)
+		}
+	}
+}

@@ -323,7 +323,11 @@ func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
-	result := researchTaskResponses(items)
+	result, err := h.service.ResearchTaskResponses(r.Context(), items)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
 	response.JSON(w, http.StatusOK, map[string]any{"data": result, "meta": map[string]any{
 		"count": len(result), "total": total, "page": page, "pageSize": pageSize, "totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
 	}})
@@ -413,7 +417,12 @@ func (h *Handler) GetResearchTask(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, r, err)
 		return
 	}
-	response.Data(w, 200, researchTaskResponse(item))
+	result, err := h.service.ResearchTaskResponses(r.Context(), []ResearchTask{*item})
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Data(w, 200, result[0])
 }
 func (h *Handler) UpdateResearchTask(w http.ResponseWriter, r *http.Request) {
 	id, ok := h.id(w, r, "taskID")

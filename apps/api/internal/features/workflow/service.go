@@ -1374,3 +1374,37 @@ func proposalPriority(value string) string {
 		return "medium"
 	}
 }
+
+// ResearchTaskResponses adds sourced scholarship deadlines after task ownership has been checked.
+func (s *Service) ResearchTaskResponses(ctx context.Context, tasks []ResearchTask) ([]ResearchTaskResponse, error) {
+	responses := researchTaskResponses(tasks)
+	ids := []uuid.UUID{}
+	indexes := map[uuid.UUID]int{}
+	for i := range tasks {
+		if principal.EnforceOwner(ctx, tasks[i].UserID) != nil {
+			return nil, ErrResearchTaskNotFound
+		}
+		if tasks[i].Status == "review_required" || tasks[i].Status == "completed" {
+			ids = append(ids, tasks[i].ID)
+			indexes[tasks[i].ID] = i
+		}
+	}
+	if len(ids) == 0 {
+		return responses, nil
+	}
+	findings, err := s.repo.ListTaskDeadlineFindings(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, finding := range findings {
+		i, ok := indexes[finding.ResearchTaskID]
+		if !ok || finding.ReviewStatus == "rejected" || finding.SourceID == nil || finding.SourceURL == "" {
+			continue
+		}
+		responses[i].ScholarshipDeadlines = append(responses[i].ScholarshipDeadlines, ScholarshipDeadlineResponse{
+			FindingID: finding.ID, Field: finding.Field, Value: json.RawMessage(finding.Value), RawText: finding.RawText,
+			Notes: finding.Notes, SourceURL: finding.SourceURL, VerificationStatus: finding.VerificationStatus, ReviewStatus: finding.ReviewStatus,
+		})
+	}
+	return responses, nil
+}

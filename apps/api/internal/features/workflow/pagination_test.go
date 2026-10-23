@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/byte/scholarship-os/apps/api/internal/features/application"
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -110,5 +112,43 @@ func TestAgentResearchQueueUsesPriorityAndDeadlineOrder(t *testing.T) {
 	filters := repo.listFilters
 	if filters.Status == nil || *filters.Status != "queued" || filters.Limit != 5 || filters.SortBy != "priority" || !filters.OldestFirst {
 		t.Fatalf("unexpected queue ordering: %+v", filters)
+	}
+}
+
+type deadlineRepository struct {
+	Repository
+	findings  []TaskDeadlineFinding
+	requested []uuid.UUID
+}
+
+func (r *deadlineRepository) ListTaskDeadlineFindings(_ context.Context, ids []uuid.UUID) ([]TaskDeadlineFinding, error) {
+	r.requested = ids
+	return r.findings, nil
+}
+
+func TestScholarshipDeadlinesOnlyUseFinishedOwnedResearch(t *testing.T) {
+	owner, other, taskID, sourceID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	ctx := principal.WithPrincipal(context.Background(), principal.Principal{Type: principal.PrincipalUser, UserID: &owner})
+	repo := &deadlineRepository{findings: []TaskDeadlineFinding{
+		{ResearchTaskID: taskID, SourceURL: "https://example.edu/funding", ResearchFinding: application.ResearchFinding{ID: uuid.New(), SourceID: &sourceID, Field: "scholarshipDeadline", Value: profile.JSON(`{"rawText":"January 2027","deadlineAt":null,"datePrecision":"month"}`), VerificationStatus: "supported", ReviewStatus: "pending"}},
+		{ResearchTaskID: taskID, SourceURL: "https://example.edu/old", ResearchFinding: application.ResearchFinding{SourceID: &sourceID, ReviewStatus: "rejected"}},
+		{ResearchTaskID: taskID, ResearchFinding: application.ResearchFinding{SourceID: &sourceID, ReviewStatus: "pending"}},
+	}}
+	service := NewService(repo, nil, nil, nil, nil)
+	tasks := []ResearchTask{{Base: Base{ID: taskID}, UserID: owner, Status: "review_required"}, {Base: Base{ID: uuid.New()}, UserID: owner, Status: "running"}}
+	result, err := service.ResearchTaskResponses(ctx, tasks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(repo.requested) != 1 || repo.requested[0] != taskID || len(result[0].ScholarshipDeadlines) != 1 || len(result[1].ScholarshipDeadlines) != 0 {
+		t.Fatalf("unexpected enrichment: %+v", result)
+	}
+	finding := result[0].ScholarshipDeadlines[0]
+	if string(finding.Value) != string(repo.findings[0].Value) || finding.ReviewStatus != "pending" || finding.SourceURL != "https://example.edu/funding" {
+		t.Fatalf("precision or provenance lost: %+v", finding)
+	}
+	tasks[0].UserID = other
+	if _, err := service.ResearchTaskResponses(ctx, tasks); err == nil {
+		t.Fatal("cross-workspace enrichment allowed")
 	}
 }

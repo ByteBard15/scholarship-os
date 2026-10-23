@@ -22,7 +22,19 @@ export type ResearchTaskStatus =
   | "failed"
   | "cancelled";
 
+export interface ScholarshipDeadline {
+  findingId: string;
+  field: string;
+  value: unknown;
+  rawText?: string;
+  notes?: string;
+  sourceUrl: string;
+  verificationStatus: string;
+  reviewStatus: string;
+}
+
 export interface ResearchTask {
+  scholarshipDeadlines?: ScholarshipDeadline[];
   id: string;
   userId: string;
   parentTaskId?: string;

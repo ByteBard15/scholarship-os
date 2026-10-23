@@ -1,3 +1,4 @@
+import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -28,7 +29,6 @@ export function ResearchPage() {
   );
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState("priority");
-  const [dueAt, setDueAt] = useState("");
   const [status, setStatus] = useState("");
   const [taskType, setTaskType] = useState("");
   const [priority, setPriority] = useState("");
@@ -72,7 +72,6 @@ export function ResearchPage() {
           instructions: instructions || undefined,
           taskType: type,
           priority: taskPriority,
-          dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
           profileId: profileId || undefined,
           links: link ? [{ url: link, linkType: "official" }] : [],
           researchContextIds: selectedContextIds,
@@ -85,7 +84,6 @@ export function ResearchPage() {
     onSuccess: () => {
       setCreateOpen(false);
       setPage(1);
-      setDueAt("");
       setTaskPriority("normal");
       setType("scholarship_research");
       setTitle("");
@@ -361,19 +359,6 @@ export function ResearchPage() {
               <option value="high">High</option>
               <option value="urgent">Urgent</option>
             </select>
-            <label className="grid gap-1 text-sm md:col-span-2">
-              Research deadline (optional, your local time)
-              <input
-                type="datetime-local"
-                className="rounded border px-3 py-2"
-                value={dueAt}
-                onChange={(event) => setDueAt(event.target.value)}
-              />
-              <span className="text-xs text-slate-500">
-                When this research should be ready. Scholarship deadlines remain
-                sourced research findings.
-              </span>
-            </label>
             <div className="flex gap-3 md:col-span-2">
               <RequestButton
                 pending={create.isPending && !create.variables}
@@ -508,7 +493,6 @@ export function ResearchPage() {
             }}
           >
             <option value="priority">Priority</option>
-            <option value="dueAt">Earliest deadline</option>
             <option value="createdAt">Newest</option>
           </select>
         </label>
@@ -530,26 +514,22 @@ export function ResearchPage() {
       )}
       <div className="mt-4 grid gap-3">
         {tasks.data?.data.map((task) => (
-          <Link
-            key={task.id}
-            to={`/research/${task.id}`}
-            className="rounded-lg border bg-white p-4"
-          >
-            <div className="flex justify-between">
-              <span className="font-medium">{task.title}</span>
-              <span className="text-xs uppercase text-indigo-700">
-                {task.status.replaceAll("_", " ")}
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-slate-600">
-              {task.taskType.replaceAll("_", " ")} · {task.priority ?? "normal"}{" "}
-              · Created {new Date(task.createdAt).toLocaleDateString()}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Research deadline:{" "}
-              {task.dueAt ? new Date(task.dueAt).toLocaleString() : "Not set"}
-            </p>
-          </Link>
+          <article key={task.id} className="rounded-lg border bg-white p-4">
+            <Link to={`/research/${task.id}`} className="block">
+              <div className="flex justify-between">
+                <span className="font-medium">{task.title}</span>
+                <span className="text-xs uppercase text-indigo-700">
+                  {task.status.replaceAll("_", " ")}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-slate-600">
+                {task.taskType.replaceAll("_", " ")} ·{" "}
+                {task.priority ?? "normal"} · Created{" "}
+                {new Date(task.createdAt).toLocaleDateString()}
+              </p>
+            </Link>
+            <ScholarshipDeadlines task={task} />
+          </article>
         ))}
       </div>
       <nav

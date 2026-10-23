@@ -30,7 +30,15 @@ type PrefillPersistence struct {
 	Activities          []AgentActivity
 }
 
+type TaskDeadlineFinding struct {
+	ResearchTaskID              uuid.UUID
+	application.ResearchFinding `gorm:"embedded"`
+	SourceURL                   string
+}
+
 type Repository interface {
+	ListTaskDeadlineFindings(context.Context, []uuid.UUID) ([]TaskDeadlineFinding, error)
+
 	CreateResearchTask(context.Context, *ResearchTask, []ResearchTaskLink, []ResearchContext, []uuid.UUID) error
 	ListResearchTasks(context.Context, ResearchTaskFilters) ([]ResearchTask, error)
 	CountResearchTasks(context.Context, ResearchTaskFilters) (int64, error)

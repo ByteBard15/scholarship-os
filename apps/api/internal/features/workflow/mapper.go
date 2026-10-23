@@ -13,7 +13,7 @@ func researchTaskResponse(item *ResearchTask) ResearchTaskResponse {
 		value := "normal"
 		priority = &value
 	}
-	return ResearchTaskResponse{ID: item.ID, UserID: item.UserID, ParentTaskID: item.ParentTaskID, TargetApplicationID: item.TargetApplicationID, ProfileID: item.ProfileID, Title: item.Title, Description: item.Description, Instructions: item.Instructions, TaskType: item.TaskType, Status: item.Status, Priority: priority, DueAt: utcTime(item.DueAt), ResearchConfig: json.RawMessage(item.ResearchConfig), StartedAt: utcTime(item.StartedAt), CompletedAt: utcTime(item.CompletedAt), FailedAt: utcTime(item.FailedAt), FailureReason: item.FailureReason, CreatedAt: item.CreatedAt.UTC(), UpdatedAt: item.UpdatedAt.UTC()}
+	return ResearchTaskResponse{ScholarshipDeadlines: []ScholarshipDeadlineResponse{}, ID: item.ID, UserID: item.UserID, ParentTaskID: item.ParentTaskID, TargetApplicationID: item.TargetApplicationID, ProfileID: item.ProfileID, Title: item.Title, Description: item.Description, Instructions: item.Instructions, TaskType: item.TaskType, Status: item.Status, Priority: priority, DueAt: utcTime(item.DueAt), ResearchConfig: json.RawMessage(item.ResearchConfig), StartedAt: utcTime(item.StartedAt), CompletedAt: utcTime(item.CompletedAt), FailedAt: utcTime(item.FailedAt), FailureReason: item.FailureReason, CreatedAt: item.CreatedAt.UTC(), UpdatedAt: item.UpdatedAt.UTC()}
 }
 
 func researchTaskResponses(items []ResearchTask) []ResearchTaskResponse {

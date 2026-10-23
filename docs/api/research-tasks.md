@@ -57,3 +57,16 @@ last. Creation time and UUID break ties consistently.
 Agent polling retains its `limit` contract, returning queued tasks by priority,
 then earliest known deadline, then oldest creation time and UUID. The export
 endpoint returns the complete filtered set, without page or page-size limits.
+
+### Researched scholarship deadlines
+
+The research list and detail responses include `scholarshipDeadlines`, derived
+from sourced, non-rejected `deadline` findings in the task's latest run, only
+when both the task and latest run are ready for review or completed. Unfinished
+reruns do not expose older deadlines. Each entry retains `findingId`, `field`,
+`value`, optional `rawText`/`notes`, `sourceUrl`, `verificationStatus`, and
+`reviewStatus`. Multiple nomination, funding, or admission deadlines stay
+separate. Vague wording and conflicts are preserved; pending findings remain
+marked as awaiting review. An empty array means research has not established a
+sourced deadline. The UI displays these findings, not the internal `dueAt`
+scheduling field, and does not ask users to enter a research deadline.

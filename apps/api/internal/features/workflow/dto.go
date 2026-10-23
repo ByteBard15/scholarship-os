@@ -138,7 +138,20 @@ type TaskLinkRequest struct {
 	LinkType *string `json:"linkType"`
 }
 
+type ScholarshipDeadlineResponse struct {
+	FindingID          uuid.UUID       `json:"findingId"`
+	Field              string          `json:"field"`
+	Value              json.RawMessage `json:"value"`
+	RawText            *string         `json:"rawText,omitempty"`
+	Notes              *string         `json:"notes,omitempty"`
+	SourceURL          string          `json:"sourceUrl"`
+	VerificationStatus string          `json:"verificationStatus"`
+	ReviewStatus       string          `json:"reviewStatus"`
+}
+
 type ResearchTaskResponse struct {
+	ScholarshipDeadlines []ScholarshipDeadlineResponse `json:"scholarshipDeadlines"`
+
 	ID                  uuid.UUID       `json:"id"`
 	UserID              uuid.UUID       `json:"userId"`
 	ParentTaskID        *uuid.UUID      `json:"parentTaskId,omitempty"`

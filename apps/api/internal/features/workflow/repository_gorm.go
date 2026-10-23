@@ -1152,3 +1152,23 @@ func (r *GORMRepository) PreparationSummary(ctx context.Context, applicationID u
 	summary.RequiredQuestionsTotal, summary.RequiredQuestionsAnswered = int(requiredTotal), int(requiredAnswered)
 	return summary, nil
 }
+
+// Only the latest run can contribute deadlines; unfinished reruns must not expose stale findings.
+func (r *GORMRepository) ListTaskDeadlineFindings(ctx context.Context, taskIDs []uuid.UUID) ([]TaskDeadlineFinding, error) {
+	items := []TaskDeadlineFinding{}
+	if len(taskIDs) == 0 {
+		return items, nil
+	}
+	latestRuns := r.db.WithContext(ctx).Model(&application.ResearchRun{}).
+		Select("DISTINCT ON (research_task_id) id, research_task_id, status").
+		Where("research_task_id IN ?", taskIDs).
+		Order("research_task_id, created_at DESC, id DESC")
+	err := r.db.WithContext(ctx).Table("research_findings AS findings").
+		Select("findings.*, runs.research_task_id, sources.url AS source_url").
+		Joins("JOIN (?) AS runs ON runs.id = findings.research_run_id", latestRuns).
+		Joins("JOIN research_sources AS sources ON sources.id = findings.source_id AND sources.research_run_id = runs.id").
+		Where("runs.status IN ?", []string{"review_required", "completed"}).
+		Where("findings.category = ? AND findings.review_status <> ?", "deadline", "rejected").
+		Order("findings.created_at ASC, findings.id ASC").Find(&items).Error
+	return items, err
+}

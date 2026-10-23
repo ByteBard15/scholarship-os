@@ -1,3 +1,4 @@
+import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
@@ -111,9 +112,9 @@ export function ResearchDetailPage() {
         {item.description ?? "No description"}
       </p>
       <p className="mt-2 text-sm text-slate-600">
-        Priority: {item.priority ?? "normal"} · Research deadline:{" "}
-        {item.dueAt ? new Date(item.dueAt).toLocaleString() : "Not set"}
+        Priority: {item.priority ?? "normal"}
       </p>
+      <ScholarshipDeadlines task={item} />
       <div className="mt-4 flex gap-2">
         <span className="rounded bg-slate-100 px-2 py-1 text-xs uppercase">
           {item.status.replaceAll("_", " ")}
@@ -708,13 +709,6 @@ function DraftTaskEditor({
   const [instructions, setInstructions] = useState(item.instructions ?? "");
   const [taskType, setTaskType] = useState(item.taskType);
   const [priority, setPriority] = useState(item.priority ?? "normal");
-  const [dueAt, setDueAt] = useState(() => {
-    if (!item.dueAt) return "";
-    const date = new Date(item.dueAt);
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-  });
   const [profileId, setProfileId] = useState(item.profileId ?? "");
   const [contextIds, setContextIds] = useState(
     selectedContexts.map((context) => context.id),
@@ -727,8 +721,6 @@ function DraftTaskEditor({
         instructions,
         taskType,
         priority,
-        dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
-        clearDueAt: !dueAt,
         profileId: profileId || undefined,
         clearProfile: !profileId,
       });
@@ -793,15 +785,6 @@ function DraftTaskEditor({
         <option value="high">High</option>
         <option value="urgent">Urgent</option>
       </select>
-      <label className="grid gap-1 text-sm md:col-span-2">
-        Research deadline (optional, your local time)
-        <input
-          type="datetime-local"
-          className="rounded border px-3 py-2"
-          value={dueAt}
-          onChange={(event) => setDueAt(event.target.value)}
-        />
-      </label>
       <label className="grid gap-1 text-sm md:col-span-2">
         Applicant profile
         <select
