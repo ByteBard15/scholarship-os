@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -166,13 +167,14 @@ export function ProfileDetailPage() {
                 Compare
               </Link>
             )}
-            <button
+            <RequestButton
+              pending={exportBundle.isPending}
               className="rounded border px-3 py-1 text-sm"
               disabled={exportBundle.isPending}
-              onClick={() => exportBundle.mutate()}
+              onClick={() => exportBundle.mutateAsync()}
             >
               {exportBundle.isPending ? "Exporting…" : "Export JSON"}
-            </button>
+            </RequestButton>
           </div>
         </div>
         <div className="rounded-lg border bg-white p-4 text-center">
@@ -214,7 +216,7 @@ export function ProfileDetailPage() {
           definition={section}
           entries={profile[section.responseKey]}
           onHideInherited={(item: ProfileEntry) =>
-            addOverride.mutate({
+            addOverride.mutateAsync({
               entityType: section.endpoint,
               entityId: item.id,
               fieldName: "visibility",
@@ -231,13 +233,14 @@ export function ProfileDetailPage() {
             accept=".txt,.docx,.pdf"
             onChange={(event) => setFile(event.target.files?.[0])}
           />
-          <button
+          <RequestButton
+            pending={upload.isPending}
             className="rounded bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50"
             disabled={!file || upload.isPending}
-            onClick={() => upload.mutate()}
+            onClick={() => upload.mutateAsync()}
           >
             Upload CV
-          </button>
+          </RequestButton>
         </div>
         <div className="mt-4 grid gap-2">
           {documents.data?.data.map((document) => (
@@ -248,12 +251,12 @@ export function ProfileDetailPage() {
               <span>
                 {document.originalFilename} · {document.status}
               </span>
-              <button
+              <RequestButton
                 className="text-sm text-indigo-700"
-                onClick={() => startImport.mutate(document.id)}
+                onClick={() => startImport.mutateAsync(document.id)}
               >
                 Import profile data
-              </button>
+              </RequestButton>
             </div>
           ))}
         </div>
@@ -306,9 +309,12 @@ export function ProfileDetailPage() {
               onChange={(event) => setOverrideValue(event.target.value)}
               placeholder="Replacement text"
             />
-            <button className="rounded bg-indigo-700 px-3 py-2 text-white">
+            <RequestButton
+              pending={addOverride.isPending}
+              className="rounded bg-indigo-700 px-3 py-2 text-white"
+            >
               Create override
-            </button>
+            </RequestButton>
           </form>
         )}
         <div className="mt-3 grid gap-2">
@@ -320,12 +326,12 @@ export function ProfileDetailPage() {
               <span>
                 {item.overrideType} {item.entityType}.{item.fieldName}
               </span>
-              <button
+              <RequestButton
                 className="text-sm text-red-700"
-                onClick={() => removeOverride.mutate(item.id)}
+                onClick={() => removeOverride.mutateAsync(item.id)}
               >
                 Restore inherited value
-              </button>
+              </RequestButton>
             </div>
           ))}
         </div>
@@ -339,12 +345,12 @@ export function ProfileDetailPage() {
             onChange={(event) => setReason(event.target.value)}
             placeholder="Snapshot reason"
           />
-          <button
+          <RequestButton
             className="rounded bg-indigo-700 px-3 py-2 text-white"
-            onClick={() => snapshot.mutate()}
+            onClick={() => snapshot.mutateAsync()}
           >
             Create snapshot
-          </button>
+          </RequestButton>
         </div>
         <div className="mt-3 grid gap-2">
           {snapshots.data?.data.map((item) => (

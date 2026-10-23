@@ -4,6 +4,7 @@ import type {
   ApplicationField,
   ApplicationProposal,
   Collection,
+  PaginatedCollection,
   Envelope,
   InformationRequest,
   PreparationSummary,
@@ -28,7 +29,7 @@ export const workflowKeys = {
 };
 
 export const listResearchTasks = (query = "") =>
-  getJSON<Collection<ResearchTask>>(`/api/v1/research-tasks${query}`);
+  getJSON<PaginatedCollection<ResearchTask>>(`/api/v1/research-tasks${query}`);
 export const getResearchTask = (id: string) =>
   getJSON<Envelope<ResearchTask>>(`/api/v1/research-tasks/${id}`);
 export const createResearchTask = (
@@ -39,6 +40,7 @@ export const createResearchTask = (
     instructions?: string;
     taskType: string;
     priority?: string;
+    dueAt?: string;
     targetApplicationId?: string;
     profileId?: string;
     links: Array<{ label?: string; url: string; linkType?: string }>;
@@ -60,6 +62,7 @@ export const importResearchTasks = (input: {
     instructions?: string;
     taskType: string;
     priority?: string;
+    dueAt?: string;
     targetApplicationId?: string;
     profileId?: string;
     links?: Array<{ label?: string; url: string; linkType?: string }>;
@@ -72,7 +75,9 @@ export const importResearchTasks = (input: {
     body: JSON.stringify(input),
   });
 export const exportResearchTasks = (query = "") =>
-  getJSON<Envelope<ResearchTaskExport>>(`/api/v1/research-tasks/export${query}`);
+  getJSON<Envelope<ResearchTaskExport>>(
+    `/api/v1/research-tasks/export${query}`,
+  );
 export const transitionResearchTask = (
   id: string,
   action: "queue" | "cancel" | "retry",
@@ -94,8 +99,10 @@ export const updateResearchTask = (
     instructions?: string;
     taskType?: string;
     priority?: string;
+    dueAt?: string;
     profileId?: string;
     clearProfile?: boolean;
+    clearDueAt?: boolean;
   },
 ) =>
   requestJSON<Envelope<ResearchTask>>(`/api/v1/research-tasks/${id}`, {

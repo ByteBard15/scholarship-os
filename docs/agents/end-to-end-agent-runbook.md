@@ -32,7 +32,7 @@ Agents cannot approve or reject Application Proposals. That action belongs to a 
 GET /api/v1/agent/research-tasks?limit=10
 ```
 
-Process the returned tasks in queue order. Do not repeatedly claim many tasks that cannot be completed promptly.
+Process the returned tasks in queue order (priority, earliest known research deadline, then oldest creation time). Do not repeatedly claim many tasks that cannot be completed promptly.
 
 ### Step 2: Atomically claim one task
 

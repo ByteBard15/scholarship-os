@@ -244,14 +244,39 @@ func (s *Service) DetachTaskContext(ctx context.Context, taskID, contextID uuid.
 	return s.repo.DetachTaskContext(ctx, taskID, contextID)
 }
 
-func (s *Service) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) ([]ResearchTask, error) {
+func researchTaskOwnerFilters(ctx context.Context, filters ResearchTaskFilters) (ResearchTaskFilters, error) {
 	if actor, ok := principal.PrincipalFromContext(ctx); ok && !actor.IsSystem() {
 		if actor.UserID == nil {
-			return nil, principal.ErrForbidden
+			return filters, principal.ErrForbidden
 		}
 		filters.UserID = actor.UserID
 	}
+	return filters, nil
+}
+
+func (s *Service) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) ([]ResearchTask, error) {
+	filters, err := researchTaskOwnerFilters(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
 	return s.repo.ListResearchTasks(ctx, filters)
+}
+
+func (s *Service) ListResearchTaskPage(ctx context.Context, filters ResearchTaskFilters, page, pageSize int) ([]ResearchTask, int64, error) {
+	if page < 1 || page > 1000000 || pageSize < 1 || pageSize > 100 {
+		return nil, 0, validationError("invalid research task pagination")
+	}
+	filters, err := researchTaskOwnerFilters(ctx, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.repo.CountResearchTasks(ctx, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+	filters.Limit, filters.Offset = pageSize, (page-1)*pageSize
+	items, err := s.repo.ListResearchTasks(ctx, filters)
+	return items, total, err
 }
 func (s *Service) GetResearchTask(ctx context.Context, id uuid.UUID) (*ResearchTask, error) {
 	value, err := s.repo.GetResearchTask(ctx, id)
@@ -298,7 +323,9 @@ func (s *Service) UpdateResearchTask(ctx context.Context, id uuid.UUID, request 
 	if request.Priority != nil {
 		task.Priority = request.Priority
 	}
-	if request.DueAt != nil {
+	if request.ClearDueAt {
+		task.DueAt = nil
+	} else if request.DueAt != nil {
 		task.DueAt = request.DueAt
 	}
 	if request.ResearchConfig != nil {

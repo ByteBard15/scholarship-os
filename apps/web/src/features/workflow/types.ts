@@ -1,6 +1,17 @@
 export type Envelope<T> = { data: T };
 export type Collection<T> = { data: T[]; meta: { count: number } };
 
+export type PaginatedCollection<T> = {
+  data: T[];
+  meta: {
+    count: number;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+};
+
 export type ResearchTaskStatus =
   | "draft"
   | "ready"
@@ -23,7 +34,7 @@ export interface ResearchTask {
   taskType: string;
   status: ResearchTaskStatus;
   priority?: string;
-  dueAt?: string;
+  dueAt?: string | null;
   researchConfig?: unknown;
   startedAt?: string;
   completedAt?: string;
@@ -50,7 +61,7 @@ export interface ResearchTaskExportRecord {
   instructions?: string;
   taskType: string;
   priority?: string;
-  dueAt?: string;
+  dueAt?: string | null;
   researchConfig?: unknown;
   links: Array<{ label?: string; url: string; linkType?: string }>;
   researchContexts: Array<{ question: string; answer: string }>;

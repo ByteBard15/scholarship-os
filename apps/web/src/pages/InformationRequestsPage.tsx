@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -57,9 +58,11 @@ export function InformationRequestsPage() {
           <RequestCard
             key={request.id}
             request={request}
-            onRespond={(value) => respond.mutate({ id: request.id, value })}
-            onProcess={() => process.mutate(request.id)}
-            onReopen={() => reopen.mutate(request.id)}
+            onRespond={(value) =>
+              respond.mutateAsync({ id: request.id, value })
+            }
+            onProcess={() => process.mutateAsync(request.id)}
+            onReopen={() => reopen.mutateAsync(request.id)}
           />
         ))}
       </div>
@@ -73,9 +76,9 @@ function RequestCard({
   onReopen,
 }: {
   request: InformationRequest;
-  onRespond(value: string): void;
-  onProcess(): void;
-  onReopen(): void;
+  onRespond(value: string): Promise<unknown>;
+  onProcess(): Promise<unknown>;
+  onReopen(): Promise<unknown>;
 }) {
   const [value, setValue] = useState("");
   return (
@@ -98,34 +101,34 @@ function RequestCard({
             value={value}
             onChange={(event) => setValue(event.target.value)}
           />
-          <button
+          <RequestButton
             className="rounded bg-indigo-700 px-4 py-2 text-white"
             onClick={() => onRespond(value)}
             disabled={!value}
           >
             Submit Response
-          </button>
+          </RequestButton>
         </div>
       )}
       {request.status === "answered" && (
-        <button
+        <RequestButton
           className="mt-4 rounded bg-indigo-700 px-4 py-2 text-white"
           onClick={onProcess}
         >
           Process Response
-        </button>
+        </RequestButton>
       )}
       {request.status === "completed" && (
         <div className="mt-4">
           <p className="text-sm text-emerald-700">
             COMPLETED — response applied with provenance.
           </p>
-          <button
+          <RequestButton
             className="mt-2 rounded border px-3 py-1.5 text-sm"
             onClick={onReopen}
           >
             Reopen
-          </button>
+          </RequestButton>
         </div>
       )}
       {request.responses.length > 0 && (

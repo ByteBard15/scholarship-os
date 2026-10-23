@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   createResearchTask,
@@ -15,20 +15,36 @@ import { useAuth } from "../features/auth/AuthProvider";
 import { useProfiles } from "../features/profile/queries";
 import { CollapsibleText } from "../components/CollapsibleText";
 
+import { Dialog } from "../components/Dialog";
+import { RequestButton } from "../components/RequestButton";
+
 export function ResearchPage() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
+  const [createOpen, setCreateOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageAction, setPageAction] = useState<"previous" | "next" | null>(
+    null,
+  );
+  const [pageSize, setPageSize] = useState(20);
+  const [sortBy, setSortBy] = useState("priority");
+  const [dueAt, setDueAt] = useState("");
   const [status, setStatus] = useState("");
   const [taskType, setTaskType] = useState("");
   const [priority, setPriority] = useState("");
   const query = new URLSearchParams(
     Object.fromEntries(
-      Object.entries({ userId, status, taskType, priority }).filter(
+      Object.entries({ userId, status, taskType, priority, sortBy }).filter(
         ([, value]) => value,
       ),
     ),
   ).toString();
-  const tasks = useResearchTasks(query ? `?${query}` : "");
+  const tasks = useResearchTasks(`?${query}&page=${page}&pageSize=${pageSize}`);
+  useEffect(() => {
+    const totalPages = tasks.data?.meta.totalPages;
+    if (totalPages !== undefined && page > Math.max(1, totalPages))
+      setPage(Math.max(1, totalPages));
+  }, [tasks.data?.meta.totalPages, page]);
   const contexts = useResearchContexts(userId);
   const profiles = useProfiles(userId);
   const client = useQueryClient();
@@ -56,6 +72,7 @@ export function ResearchPage() {
           instructions: instructions || undefined,
           taskType: type,
           priority: taskPriority,
+          dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
           profileId: profileId || undefined,
           links: link ? [{ url: link, linkType: "official" }] : [],
           researchContextIds: selectedContextIds,
@@ -66,6 +83,11 @@ export function ResearchPage() {
         queue,
       ),
     onSuccess: () => {
+      setCreateOpen(false);
+      setPage(1);
+      setDueAt("");
+      setTaskPriority("normal");
+      setType("scholarship_research");
       setTitle("");
       setDescription("");
       setInstructions("");
@@ -85,6 +107,7 @@ export function ResearchPage() {
           instructions?: string;
           taskType: string;
           priority?: string;
+          dueAt?: string;
           targetApplicationId?: string;
           profileId?: string;
           links?: Array<{ label?: string; url: string; linkType?: string }>;
@@ -109,9 +132,12 @@ export function ResearchPage() {
       void client.invalidateQueries({ queryKey: workflowKeys.all });
     },
     onError: (error) => {
-      setImportMessage(error instanceof Error ? error.message : "Import failed");
+      setImportMessage(
+        error instanceof Error ? error.message : "Import failed",
+      );
     },
   });
+  const exportTasks = useMutation({ mutationFn: downloadExport });
   async function downloadExport() {
     const value = await exportResearchTasks(query ? `?${query}` : "");
     const blob = new Blob([JSON.stringify(value.data, null, 2)], {
@@ -126,8 +152,9 @@ export function ResearchPage() {
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    create.mutate(submitter?.value === "queue");
+    const submitter = (event.nativeEvent as SubmitEvent)
+      .submitter as HTMLButtonElement | null;
+    if (!create.isPending) create.mutate(submitter?.value === "queue");
   }
   return (
     <section>
@@ -136,192 +163,245 @@ export function ResearchPage() {
         Create controlled research work. Results become proposals and never
         Applications until you approve them.
       </p>
-      <form
-        onSubmit={submit}
-        className="mt-6 grid gap-3 rounded-lg border bg-white p-5 md:grid-cols-2"
+      <button
+        type="button"
+        className="mt-5 rounded bg-indigo-700 px-4 py-2 text-white"
+        onClick={() => {
+          create.reset();
+          setCreateOpen(true);
+        }}
       >
-        <input
-          required
-          className="rounded border px-3 py-2 md:col-span-2"
-          placeholder="Research task title"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <textarea
-          className="rounded border px-3 py-2"
-          placeholder="Description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        <textarea
-          className="rounded border px-3 py-2"
-          placeholder="Custom instructions"
-          value={instructions}
-          onChange={(event) => setInstructions(event.target.value)}
-        />
-        <input
-          className="rounded border px-3 py-2 md:col-span-2"
-          type="url"
-          placeholder="Official or reference URL (optional)"
-          value={link}
-          onChange={(event) => setLink(event.target.value)}
-        />
-        <label className="grid gap-1 text-sm md:col-span-2">
-          Applicant profile
-          <select
-            className="rounded border px-3 py-2"
-            required
-            value={profileId}
-            onChange={(event) => setProfileId(event.target.value)}
-          >
-            <option value="">Select a profile</option>
-            {profiles.data?.data.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name} ({profile.profileType})
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset className="rounded border p-4 md:col-span-2">
-          <legend className="px-2 text-sm font-medium">
-            Reusable research context
-          </legend>
-          <p className="mb-3 text-xs text-slate-500">
-            Select saved answers or add new question-and-answer context. New
-            entries are saved to your context library and can be reused by
-            later research tasks.
-          </p>
-          {contexts.data?.data.length ? (
-            <div className="mb-4 grid gap-2">
-              {contexts.data.data.map((context) => (
-                <label className="flex gap-2 rounded bg-slate-50 p-3 text-sm" key={context.id}>
-                  <input
-                    checked={selectedContextIds.includes(context.id)}
-                    onChange={(event) =>
-                      setSelectedContextIds((current) =>
-                        event.target.checked
-                          ? [...current, context.id]
-                          : current.filter((id) => id !== context.id),
-                      )
-                    }
-                    type="checkbox"
-                  />
-                  <span>
-                    <strong>{context.question}</strong>
-                    <CollapsibleText
-                      className="mt-1 text-slate-600"
-                      lines={5}
+        New research task
+      </button>
+      <Dialog
+        open={createOpen}
+        title="New research task"
+        busy={create.isPending}
+        onClose={() => setCreateOpen(false)}
+      >
+        <form
+          onSubmit={submit}
+          className="grid gap-3 bg-white p-5 md:grid-cols-2"
+        >
+          <fieldset disabled={create.isPending} className="contents">
+            <input
+              required
+              className="rounded border px-3 py-2 md:col-span-2"
+              placeholder="Research task title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+            <textarea
+              className="rounded border px-3 py-2"
+              placeholder="Description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+            <textarea
+              className="rounded border px-3 py-2"
+              placeholder="Custom instructions"
+              value={instructions}
+              onChange={(event) => setInstructions(event.target.value)}
+            />
+            <input
+              className="rounded border px-3 py-2 md:col-span-2"
+              type="url"
+              placeholder="Official or reference URL (optional)"
+              value={link}
+              onChange={(event) => setLink(event.target.value)}
+            />
+            <label className="grid gap-1 text-sm md:col-span-2">
+              Applicant profile
+              <select
+                className="rounded border px-3 py-2"
+                required
+                value={profileId}
+                onChange={(event) => setProfileId(event.target.value)}
+              >
+                <option value="">Select a profile</option>
+                {profiles.data?.data.map((profile) => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name} ({profile.profileType})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <fieldset className="rounded border p-4 md:col-span-2">
+              <legend className="px-2 text-sm font-medium">
+                Reusable research context
+              </legend>
+              <p className="mb-3 text-xs text-slate-500">
+                Select saved answers or add new question-and-answer context. New
+                entries are saved to your context library and can be reused by
+                later research tasks.
+              </p>
+              {contexts.data?.data.length ? (
+                <div className="mb-4 grid gap-2">
+                  {contexts.data.data.map((context) => (
+                    <label
+                      className="flex gap-2 rounded bg-slate-50 p-3 text-sm"
+                      key={context.id}
                     >
-                      {context.answer}
-                    </CollapsibleText>
-                  </span>
-                </label>
-              ))}
-            </div>
-          ) : null}
-          <div className="grid gap-3">
-            {newContexts.map((context, index) => (
-              <div className="grid gap-2 rounded bg-slate-50 p-3" key={index}>
-                <input
-                  className="rounded border px-3 py-2"
-                  placeholder="Question, e.g. What courses interest you?"
-                  required={Boolean(context.question.trim() || context.answer.trim())}
-                  value={context.question}
-                  onChange={(event) =>
-                    setNewContexts((current) =>
-                      current.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? { ...item, question: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                <textarea
-                  className="rounded border px-3 py-2"
-                  placeholder="Answer or existing personal-statement material"
-                  required={Boolean(context.question.trim() || context.answer.trim())}
-                  value={context.answer}
-                  onChange={(event) =>
-                    setNewContexts((current) =>
-                      current.map((item, itemIndex) =>
-                        itemIndex === index
-                          ? { ...item, answer: event.target.value }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                {newContexts.length > 1 && (
-                  <button
-                    className="justify-self-start text-xs text-red-700"
-                    onClick={() =>
-                      setNewContexts((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index),
-                      )
-                    }
-                    type="button"
+                      <input
+                        checked={selectedContextIds.includes(context.id)}
+                        onChange={(event) =>
+                          setSelectedContextIds((current) =>
+                            event.target.checked
+                              ? [...current, context.id]
+                              : current.filter((id) => id !== context.id),
+                          )
+                        }
+                        type="checkbox"
+                      />
+                      <span>
+                        <strong>{context.question}</strong>
+                        <CollapsibleText
+                          className="mt-1 text-slate-600"
+                          lines={5}
+                        >
+                          {context.answer}
+                        </CollapsibleText>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+              <div className="grid gap-3">
+                {newContexts.map((context, index) => (
+                  <div
+                    className="grid gap-2 rounded bg-slate-50 p-3"
+                    key={index}
                   >
-                    Remove
-                  </button>
-                )}
+                    <input
+                      className="rounded border px-3 py-2"
+                      placeholder="Question, e.g. What courses interest you?"
+                      required={Boolean(
+                        context.question.trim() || context.answer.trim(),
+                      )}
+                      value={context.question}
+                      onChange={(event) =>
+                        setNewContexts((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, question: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                    <textarea
+                      className="rounded border px-3 py-2"
+                      placeholder="Answer or existing personal-statement material"
+                      required={Boolean(
+                        context.question.trim() || context.answer.trim(),
+                      )}
+                      value={context.answer}
+                      onChange={(event) =>
+                        setNewContexts((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index
+                              ? { ...item, answer: event.target.value }
+                              : item,
+                          ),
+                        )
+                      }
+                    />
+                    {newContexts.length > 1 && (
+                      <button
+                        className="justify-self-start text-xs text-red-700"
+                        onClick={() =>
+                          setNewContexts((current) =>
+                            current.filter(
+                              (_, itemIndex) => itemIndex !== index,
+                            ),
+                          )
+                        }
+                        type="button"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <button
-            className="mt-3 rounded border px-3 py-2 text-sm"
-            onClick={() =>
-              setNewContexts((current) => [
-                ...current,
-                { question: "", answer: "" },
-              ])
-            }
-            type="button"
-          >
-            Add context question
-          </button>
-        </fieldset>
-        <select
-          className="rounded border px-3 py-2"
-          value={type}
-          onChange={(event) => setType(event.target.value)}
-        >
-          <option value="scholarship_research">Scholarship research</option>
-          <option value="scholarship_discovery">Scholarship discovery</option>
-          <option value="programme_research">Programme research</option>
-          <option value="funding_research">Funding research</option>
-          <option value="general_research">General research</option>
-        </select>
-        <select
-          className="rounded border px-3 py-2"
-          value={taskPriority}
-          onChange={(event) => setTaskPriority(event.target.value)}
-        >
-          <option value="low">Low</option>
-          <option value="normal">Normal</option>
-          <option value="high">High</option>
-          <option value="urgent">Urgent</option>
-        </select>
-        <div className="flex gap-3 md:col-span-2">
-          <button
-            type="submit"
-            value="draft"
-            className="rounded border px-4 py-2"
-          >
-            Save Draft
-          </button>
-          <button
-            type="submit"
-            value="queue"
-            className="rounded bg-indigo-700 px-4 py-2 text-white"
-          >
-            Save &amp; Queue
-          </button>
-        </div>
-        {create.isError && (
-          <p className="text-red-700 md:col-span-2">{create.error.message}</p>
-        )}
-      </form>
+              <button
+                className="mt-3 rounded border px-3 py-2 text-sm"
+                onClick={() =>
+                  setNewContexts((current) => [
+                    ...current,
+                    { question: "", answer: "" },
+                  ])
+                }
+                type="button"
+              >
+                Add context question
+              </button>
+            </fieldset>
+            <select
+              className="rounded border px-3 py-2"
+              value={type}
+              onChange={(event) => setType(event.target.value)}
+            >
+              <option value="scholarship_research">Scholarship research</option>
+              <option value="scholarship_discovery">
+                Scholarship discovery
+              </option>
+              <option value="programme_research">Programme research</option>
+              <option value="funding_research">Funding research</option>
+              <option value="general_research">General research</option>
+            </select>
+            <select
+              className="rounded border px-3 py-2"
+              aria-label="Research priority"
+              value={taskPriority}
+              onChange={(event) => setTaskPriority(event.target.value)}
+            >
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            <label className="grid gap-1 text-sm md:col-span-2">
+              Research deadline (optional, your local time)
+              <input
+                type="datetime-local"
+                className="rounded border px-3 py-2"
+                value={dueAt}
+                onChange={(event) => setDueAt(event.target.value)}
+              />
+              <span className="text-xs text-slate-500">
+                When this research should be ready. Scholarship deadlines remain
+                sourced research findings.
+              </span>
+            </label>
+            <div className="flex gap-3 md:col-span-2">
+              <RequestButton
+                pending={create.isPending && !create.variables}
+                disabled={create.isPending}
+                type="submit"
+                value="draft"
+                className="rounded border px-4 py-2"
+              >
+                Save Draft
+              </RequestButton>
+              <RequestButton
+                pending={create.isPending && create.variables}
+                disabled={create.isPending}
+                type="submit"
+                value="queue"
+                className="rounded bg-indigo-700 px-4 py-2 text-white"
+              >
+                Save &amp; Queue
+              </RequestButton>
+            </div>
+            {create.isError && (
+              <p className="text-red-700 md:col-span-2">
+                {create.error.message}
+              </p>
+            )}
+          </fieldset>
+        </form>
+      </Dialog>
       <section className="mt-6 rounded-lg border bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -331,14 +411,20 @@ export function ResearchPage() {
               not included.
             </p>
           </div>
-          <button
+          <RequestButton
+            pending={exportTasks.isPending}
             className="rounded border px-3 py-2 text-sm"
-            onClick={() => void downloadExport()}
+            onClick={() => exportTasks.mutate()}
             type="button"
           >
-            Export current list
-          </button>
+            Export filtered tasks
+          </RequestButton>
         </div>
+        {exportTasks.isError && (
+          <p role="alert" className="mt-3 text-sm text-red-700">
+            {exportTasks.error.message}
+          </p>
+        )}
         <textarea
           className="mt-4 min-h-36 w-full rounded border px-3 py-2 font-mono text-sm"
           placeholder='{"tasks":[{"title":"Example Scholarship 2027","taskType":"scholarship_research","profileId":"...","links":[{"url":"https://example.edu"}],"researchContexts":[{"question":"Course interests","answer":"Biomedical imaging"}]}]}'
@@ -354,14 +440,15 @@ export function ResearchPage() {
             />
             Queue imported tasks
           </label>
-          <button
+          <RequestButton
+            pending={importTasks.isPending}
             className="rounded bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
             disabled={!importText.trim() || importTasks.isPending}
             onClick={() => importTasks.mutate()}
             type="button"
           >
             Import tasks
-          </button>
+          </RequestButton>
           {importMessage && (
             <span className="text-sm text-slate-600">{importMessage}</span>
           )}
@@ -370,12 +457,18 @@ export function ResearchPage() {
       <div className="mt-6 flex flex-wrap gap-2">
         <select
           className="rounded border px-3 py-2"
+          aria-label="Filter by status"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => {
+            setStatus(event.target.value);
+            setPage(1);
+          }}
         >
           <option value="">All statuses</option>
           <option value="draft">Draft</option>
           <option value="queued">Queued</option>
+          <option value="running">Running</option>
+          <option value="cancelled">Cancelled</option>
           <option value="review_required">Review required</option>
           <option value="completed">Completed</option>
           <option value="failed">Failed</option>
@@ -384,19 +477,57 @@ export function ResearchPage() {
           className="rounded border px-3 py-2"
           placeholder="Task type filter"
           value={taskType}
-          onChange={(event) => setTaskType(event.target.value)}
+          onChange={(event) => {
+            setTaskType(event.target.value);
+            setPage(1);
+          }}
         />
         <select
           className="rounded border px-3 py-2"
+          aria-label="Filter by priority"
           value={priority}
-          onChange={(event) => setPriority(event.target.value)}
+          onChange={(event) => {
+            setPriority(event.target.value);
+            setPage(1);
+          }}
         >
           <option value="">All priorities</option>
+          <option value="low">Low</option>
           <option value="normal">Normal</option>
           <option value="high">High</option>
           <option value="urgent">Urgent</option>
         </select>
+        <label className="flex items-center gap-2 text-sm">
+          Sort by
+          <select
+            className="rounded border px-3 py-2"
+            value={sortBy}
+            onChange={(event) => {
+              setSortBy(event.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="priority">Priority</option>
+            <option value="dueAt">Earliest deadline</option>
+            <option value="createdAt">Newest</option>
+          </select>
+        </label>
       </div>
+      {tasks.isPending && (
+        <p className="mt-4" role="status">
+          Loading research tasks…
+        </p>
+      )}
+      {tasks.isError && (
+        <p className="mt-4 text-red-700" role="alert">
+          {tasks.error.message}
+        </p>
+      )}
+      {tasks.data?.data.length === 0 && (
+        <p className="mt-4 text-slate-600">
+          No research tasks match these filters.
+        </p>
+      )}
       <div className="mt-4 grid gap-3">
         {tasks.data?.data.map((task) => (
           <Link
@@ -412,11 +543,72 @@ export function ResearchPage() {
             </div>
             <p className="mt-2 text-sm text-slate-600">
               {task.taskType.replaceAll("_", " ")} · {task.priority ?? "normal"}{" "}
-              · {new Date(task.createdAt).toLocaleDateString()}
+              · Created {new Date(task.createdAt).toLocaleDateString()}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Research deadline:{" "}
+              {task.dueAt ? new Date(task.dueAt).toLocaleString() : "Not set"}
             </p>
           </Link>
         ))}
       </div>
+      <nav
+        aria-label="Research task pagination"
+        className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm"
+      >
+        <label className="flex items-center gap-2">
+          Tasks per page
+          <select
+            className="rounded border px-2 py-1"
+            value={pageSize}
+            onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              setPage(1);
+            }}
+          >
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span>
+          {tasks.data
+            ? `${tasks.data.meta.total} task(s) · Page ${page} of ${Math.max(1, tasks.data.meta.totalPages)}`
+            : "Loading…"}
+        </span>
+        <div className="flex gap-2">
+          <RequestButton
+            type="button"
+            className="rounded border px-3 py-2 disabled:opacity-50"
+            disabled={page === 1 || tasks.isFetching}
+            pending={tasks.isFetching && pageAction === "previous"}
+            onClick={() => {
+              setPageAction("previous");
+              setPage((value) => value - 1);
+            }}
+          >
+            Previous
+          </RequestButton>
+          <RequestButton
+            type="button"
+            className="rounded border px-3 py-2 disabled:opacity-50"
+            disabled={
+              !tasks.data ||
+              page >= tasks.data.meta.totalPages ||
+              tasks.isFetching
+            }
+            pending={tasks.isFetching && pageAction === "next"}
+            onClick={() => {
+              setPageAction("next");
+              setPage((value) => value + 1);
+            }}
+          >
+            Next
+          </RequestButton>
+        </div>
+      </nav>
     </section>
   );
 }

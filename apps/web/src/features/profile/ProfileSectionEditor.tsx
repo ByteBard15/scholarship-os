@@ -1,3 +1,4 @@
+import { RequestButton } from "../../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import {
@@ -337,7 +338,8 @@ function EntryForm({
         ),
       )}
       <div className="flex items-center gap-2 md:col-span-2">
-        <button
+        <RequestButton
+          pending={mutation.isPending}
           className="rounded bg-indigo-700 px-3 py-2 text-sm text-white disabled:opacity-50"
           disabled={mutation.isPending}
         >
@@ -346,7 +348,7 @@ function EntryForm({
             : item
               ? "Save changes"
               : `Add ${definition.label.toLowerCase()} entry`}
-        </button>
+        </RequestButton>
         <button
           className="rounded border px-3 py-2 text-sm"
           type="button"
@@ -371,7 +373,7 @@ export function ProfileSectionEditor({
   profileId: string;
   definition: SectionDefinition;
   entries: ProfileEntry[];
-  onHideInherited: (entry: ProfileEntry) => void;
+  onHideInherited: (entry: ProfileEntry) => Promise<unknown>;
 }) {
   const client = useQueryClient();
   const [editing, setEditing] = useState<ProfileEntry>();
@@ -425,12 +427,12 @@ export function ProfileSectionEditor({
               </div>
               <div className="flex gap-2 text-sm">
                 {item.inherited ? (
-                  <button
+                  <RequestButton
                     className="text-red-700"
                     onClick={() => onHideInherited(item)}
                   >
                     Hide inherited item
-                  </button>
+                  </RequestButton>
                 ) : (
                   <>
                     <button
@@ -442,13 +444,14 @@ export function ProfileSectionEditor({
                     >
                       Edit
                     </button>
-                    <button
+                    <RequestButton
+                      pending={remove.isPending}
                       className="text-red-700"
                       disabled={remove.isPending}
-                      onClick={() => remove.mutate(item.id)}
+                      onClick={() => remove.mutateAsync(item.id)}
                     >
                       Delete
-                    </button>
+                    </RequestButton>
                   </>
                 )}
               </div>

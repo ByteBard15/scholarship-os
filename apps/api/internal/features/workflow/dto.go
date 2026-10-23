@@ -101,6 +101,7 @@ type UpdateResearchTaskRequest struct {
 	TargetApplicationID *uuid.UUID      `json:"targetApplicationId"`
 	ProfileID           *uuid.UUID      `json:"profileId"`
 	ClearProfile        bool            `json:"clearProfile"`
+	ClearDueAt          bool            `json:"clearDueAt"`
 	Title               *string         `json:"title" validate:"omitempty,min=1,max=250"`
 	Description         *string         `json:"description"`
 	Instructions        *string         `json:"instructions"`
@@ -111,12 +112,15 @@ type UpdateResearchTaskRequest struct {
 }
 
 type ResearchTaskFilters struct {
-	UserID      *uuid.UUID
-	Status      *string
-	TaskType    *string
-	Priority    *string
-	Limit       int
-	OldestFirst bool
+	ParentTaskID *uuid.UUID
+	UserID       *uuid.UUID
+	Status       *string
+	TaskType     *string
+	Priority     *string
+	Limit        int
+	Offset       int
+	SortBy       string
+	OldestFirst  bool
 }
 
 type CompleteAgentResearchRequest struct {
@@ -146,7 +150,7 @@ type ResearchTaskResponse struct {
 	TaskType            string          `json:"taskType"`
 	Status              string          `json:"status"`
 	Priority            *string         `json:"priority,omitempty"`
-	DueAt               *time.Time      `json:"dueAt,omitempty"`
+	DueAt               *time.Time      `json:"dueAt"`
 	ResearchConfig      json.RawMessage `json:"researchConfig,omitempty"`
 	StartedAt           *time.Time      `json:"startedAt,omitempty"`
 	CompletedAt         *time.Time      `json:"completedAt,omitempty"`

@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -196,12 +197,13 @@ export function ProfilesPage() {
             Make this the default master profile
           </label>
         )}
-        <button
+        <RequestButton
+          pending={create.isPending}
           className="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50"
           disabled={create.isPending || !name || (type !== "master" && !parent)}
         >
           Create profile and add details
-        </button>
+        </RequestButton>
         {create.isError && (
           <p className="text-sm text-red-700 md:col-span-2">
             {create.error.message}
@@ -257,7 +259,8 @@ export function ProfilesPage() {
             </option>
           ))}
         </select>
-        <button
+        <RequestButton
+          pending={importBundle.isPending}
           className="rounded bg-slate-900 px-4 py-2 text-white disabled:opacity-50"
           disabled={
             importBundle.isPending ||
@@ -266,7 +269,7 @@ export function ProfilesPage() {
           }
         >
           {importBundle.isPending ? "Importing…" : "Import profile"}
-        </button>
+        </RequestButton>
         {importBundle.isError && (
           <p className="text-sm text-red-700 md:col-span-4">
             {importBundle.error.message}

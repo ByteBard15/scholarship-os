@@ -59,8 +59,11 @@ func attachTaskContexts(tx *gorm.DB, taskID uuid.UUID, contextIDs []uuid.UUID) e
 	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&links).Error
 }
 
-func (r *GORMRepository) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) (items []ResearchTask, err error) {
-	query := r.db.WithContext(ctx)
+func (r *GORMRepository) researchTaskQuery(ctx context.Context, filters ResearchTaskFilters) *gorm.DB {
+	query := r.db.WithContext(ctx).Model(&ResearchTask{})
+	if filters.ParentTaskID != nil {
+		query = query.Where("parent_task_id = ?", *filters.ParentTaskID)
+	}
 	if filters.UserID != nil {
 		query = query.Where("user_id = ?", *filters.UserID)
 	}
@@ -71,15 +74,35 @@ func (r *GORMRepository) ListResearchTasks(ctx context.Context, filters Research
 		query = query.Where("task_type = ?", *filters.TaskType)
 	}
 	if filters.Priority != nil {
-		query = query.Where("priority = ?", *filters.Priority)
+		query = query.Where("COALESCE(priority, 'normal') = ?", *filters.Priority)
+	}
+	return query
+}
+
+func (r *GORMRepository) CountResearchTasks(ctx context.Context, filters ResearchTaskFilters) (int64, error) {
+	var count int64
+	err := r.researchTaskQuery(ctx, filters).Count(&count).Error
+	return count, err
+}
+
+func (r *GORMRepository) ListResearchTasks(ctx context.Context, filters ResearchTaskFilters) (items []ResearchTask, err error) {
+	query := r.researchTaskQuery(ctx, filters)
+	switch filters.SortBy {
+	case "priority":
+		query = query.Order("CASE COALESCE(priority, 'normal') WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 WHEN 'low' THEN 4 ELSE 5 END").Order("due_at ASC NULLS LAST")
+	case "dueAt":
+		query = query.Order("due_at ASC NULLS LAST")
 	}
 	order := "created_at DESC"
 	if filters.OldestFirst {
 		order = "created_at ASC"
 	}
-	query = query.Order(order)
+	query = query.Order(order).Order("id ASC")
 	if filters.Limit > 0 {
 		query = query.Limit(filters.Limit)
+	}
+	if filters.Offset > 0 {
+		query = query.Offset(filters.Offset)
 	}
 	err = query.Find(&items).Error
 	return

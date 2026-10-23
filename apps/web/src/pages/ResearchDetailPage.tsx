@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -39,7 +40,9 @@ export function ResearchDetailPage() {
     runs = useTaskRuns(id),
     proposals = useProposals(userId),
     profiles = useProfiles(userId),
-    relatedTasks = useResearchTasks(`?userId=${userId}`);
+    relatedTasks = useResearchTasks(
+      `?userId=${userId}&parentTaskId=${id}&pageSize=100`,
+    );
   const latestRun = runs.data?.data[0]?.id ?? "";
   const sources = useTaskSources(id, latestRun),
     findings = useTaskFindings(id, latestRun);
@@ -107,17 +110,21 @@ export function ResearchDetailPage() {
       <p className="mt-2 text-slate-600">
         {item.description ?? "No description"}
       </p>
+      <p className="mt-2 text-sm text-slate-600">
+        Priority: {item.priority ?? "normal"} · Research deadline:{" "}
+        {item.dueAt ? new Date(item.dueAt).toLocaleString() : "Not set"}
+      </p>
       <div className="mt-4 flex gap-2">
         <span className="rounded bg-slate-100 px-2 py-1 text-xs uppercase">
           {item.status.replaceAll("_", " ")}
         </span>
         {["draft", "ready"].includes(item.status) && (
-          <button
+          <RequestButton
             className="rounded border px-3 py-1 text-sm"
-            onClick={() => transition.mutate("queue")}
+            onClick={() => transition.mutateAsync("queue")}
           >
             Queue
-          </button>
+          </RequestButton>
         )}
         {item.status === "queued" && (
           <span className="rounded bg-indigo-50 px-3 py-1 text-sm text-indigo-700">
@@ -125,23 +132,24 @@ export function ResearchDetailPage() {
           </span>
         )}
         {item.status === "failed" && (
-          <button
+          <RequestButton
             className="rounded border px-3 py-1 text-sm"
-            onClick={() => transition.mutate("retry")}
+            onClick={() => transition.mutateAsync("retry")}
           >
             Retry
-          </button>
+          </RequestButton>
         )}
         {["queued", "running", "review_required"].includes(item.status) && (
-          <button
+          <RequestButton
             className="rounded border px-3 py-1 text-sm"
-            onClick={() => transition.mutate("cancel")}
+            onClick={() => transition.mutateAsync("cancel")}
           >
             Cancel
-          </button>
+          </RequestButton>
         )}
         {!["draft", "queued", "running"].includes(item.status) && (
-          <button
+          <RequestButton
+            pending={restart.isPending}
             className="rounded border border-red-200 px-3 py-1 text-sm text-red-700 disabled:opacity-50"
             disabled={restart.isPending}
             onClick={() => {
@@ -150,12 +158,12 @@ export function ResearchDetailPage() {
                   "Clear previous research results and queue this task again?",
                 )
               ) {
-                restart.mutate();
+                return restart.mutateAsync();
               }
             }}
           >
             Restart fresh
-          </button>
+          </RequestButton>
         )}
       </div>
       {restart.isError && (
@@ -369,18 +377,24 @@ export function ResearchDetailPage() {
               <div className="mt-3 flex gap-2">
                 {proposal.status === "pending" && (
                   <>
-                    <button
-                      disabled={!parent || approve.isPending}
-                      onClick={() => approve.mutate(proposal.id)}
+                    <RequestButton
+                      pending={
+                        approve.isPending && approve.variables === proposal.id
+                      }
+                      disabled={
+                        !parent || approve.isPending || review.isPending
+                      }
+                      onClick={() => approve.mutateAsync(proposal.id)}
                       className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
                     >
                       {approve.isPending
                         ? "Approving proposal…"
                         : "Approve proposal for agent"}
-                    </button>
-                    <button
+                    </RequestButton>
+                    <RequestButton
+                      disabled={approve.isPending || review.isPending}
                       onClick={() =>
-                        review.mutate({
+                        review.mutateAsync({
                           proposalId: proposal.id,
                           action: "reject",
                         })
@@ -388,13 +402,13 @@ export function ResearchDetailPage() {
                       className="rounded border px-3 py-1.5 text-sm"
                     >
                       Reject
-                    </button>
+                    </RequestButton>
                   </>
                 )}
                 {proposal.status === "rejected" && (
-                  <button
+                  <RequestButton
                     onClick={() =>
-                      review.mutate({
+                      review.mutateAsync({
                         proposalId: proposal.id,
                         action: "reopen",
                       })
@@ -402,7 +416,7 @@ export function ResearchDetailPage() {
                     className="rounded border px-3 py-1.5 text-sm"
                   >
                     Reopen
-                  </button>
+                  </RequestButton>
                 )}
               </div>
               {proposal.status === "pending" &&
@@ -451,6 +465,16 @@ export function ResearchDetailPage() {
           )}
         </Panel>
         <Panel title="Follow-up Tasks">
+          {relatedTasks.isError && (
+            <p role="alert" className="text-sm text-red-700">
+              {relatedTasks.error.message}
+            </p>
+          )}
+          {(relatedTasks.data?.meta.total ?? 0) > 100 && (
+            <p className="text-sm text-slate-500">
+              Showing the first 100 follow-up tasks.
+            </p>
+          )}
           {relatedTasks.data?.data.filter(
             (candidate) => candidate.parentTaskId === id,
           ).length ? (
@@ -684,6 +708,13 @@ function DraftTaskEditor({
   const [instructions, setInstructions] = useState(item.instructions ?? "");
   const [taskType, setTaskType] = useState(item.taskType);
   const [priority, setPriority] = useState(item.priority ?? "normal");
+  const [dueAt, setDueAt] = useState(() => {
+    if (!item.dueAt) return "";
+    const date = new Date(item.dueAt);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  });
   const [profileId, setProfileId] = useState(item.profileId ?? "");
   const [contextIds, setContextIds] = useState(
     selectedContexts.map((context) => context.id),
@@ -696,6 +727,8 @@ function DraftTaskEditor({
         instructions,
         taskType,
         priority,
+        dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+        clearDueAt: !dueAt,
         profileId: profileId || undefined,
         clearProfile: !profileId,
       });
@@ -717,7 +750,7 @@ function DraftTaskEditor({
       className="mt-6 grid gap-3 rounded-lg border border-indigo-200 bg-white p-5 md:grid-cols-2"
       onSubmit={(event) => {
         event.preventDefault();
-        save.mutate();
+        if (!save.isPending) save.mutate();
       }}
     >
       <h2 className="font-semibold md:col-span-2">Edit Draft Research Task</h2>
@@ -760,6 +793,15 @@ function DraftTaskEditor({
         <option value="high">High</option>
         <option value="urgent">Urgent</option>
       </select>
+      <label className="grid gap-1 text-sm md:col-span-2">
+        Research deadline (optional, your local time)
+        <input
+          type="datetime-local"
+          className="rounded border px-3 py-2"
+          value={dueAt}
+          onChange={(event) => setDueAt(event.target.value)}
+        />
+      </label>
       <label className="grid gap-1 text-sm md:col-span-2">
         Applicant profile
         <select
@@ -804,13 +846,14 @@ function DraftTaskEditor({
           ))}
         </div>
       </fieldset>
-      <button
+      <RequestButton
+        pending={save.isPending}
         className="rounded bg-indigo-700 px-4 py-2 text-white md:col-span-2"
         disabled={save.isPending}
         type="submit"
       >
         {save.isPending ? "Saving…" : "Save draft changes"}
-      </button>
+      </RequestButton>
       {save.isError && (
         <p className="text-sm text-red-700 md:col-span-2">
           {save.error.message}

@@ -1,3 +1,4 @@
+import { RequestButton } from "./RequestButton";
 import { NavLink, Outlet } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider";
@@ -19,17 +20,15 @@ export function AppLayout() {
             <NavLink to="/research">Research</NavLink>
             <NavLink to="/writing">Writing</NavLink>
             <NavLink to="/information-requests">Requests</NavLink>
-            <button
+            <RequestButton
               type="button"
               onClick={() =>
-                void auth
-                  .logout()
-                  .then(() => navigate("/login", { replace: true }))
+                auth.logout().then(() => navigate("/login", { replace: true }))
               }
               className="text-slate-600"
             >
               Logout
-            </button>
+            </RequestButton>
           </nav>
         </div>
       </header>

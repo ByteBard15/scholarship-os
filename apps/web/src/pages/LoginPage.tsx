@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthProvider";
@@ -59,12 +60,13 @@ export function LoginPage() {
           onChange={(event) => setPassword(event.target.value)}
         />
         {error && <p className="mt-4 text-sm text-red-700">{error}</p>}
-        <button
+        <RequestButton
+          pending={submitting}
           className="mt-6 w-full rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50"
           disabled={submitting}
         >
           {submitting ? "Signing in…" : "Login"}
-        </button>
+        </RequestButton>
       </form>
     </main>
   );

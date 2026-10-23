@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -46,12 +47,12 @@ export function ImportReviewPage() {
             and accepted candidates are applied.
           </p>
         </div>
-        <button
+        <RequestButton
           className="rounded bg-indigo-700 px-4 py-2 text-white"
-          onClick={() => apply.mutate()}
+          onClick={() => apply.mutateAsync()}
         >
           Apply accepted candidates
-        </button>
+        </RequestButton>
       </div>
       {apply.isError && (
         <p className="mt-3 text-red-700">{apply.error.message}</p>
@@ -92,31 +93,40 @@ export function ImportReviewPage() {
               </ul>
             )}
             <div className="mt-4 flex gap-2">
-              <button
+              <RequestButton
                 className="rounded border px-3 py-1"
                 onClick={() =>
-                  review.mutate({ candidateId: candidate.id, action: "accept" })
+                  review.mutateAsync({
+                    candidateId: candidate.id,
+                    action: "accept",
+                  })
                 }
               >
                 Accept
-              </button>
-              <button
+              </RequestButton>
+              <RequestButton
                 className="rounded border px-3 py-1"
                 onClick={() =>
-                  review.mutate({ candidateId: candidate.id, action: "reject" })
+                  review.mutateAsync({
+                    candidateId: candidate.id,
+                    action: "reject",
+                  })
                 }
               >
                 Reject
-              </button>
-              <button
+              </RequestButton>
+              <RequestButton
                 disabled={!candidate.matchedEntityId}
                 className="rounded border px-3 py-1 disabled:opacity-40"
                 onClick={() =>
-                  review.mutate({ candidateId: candidate.id, action: "merge" })
+                  review.mutateAsync({
+                    candidateId: candidate.id,
+                    action: "merge",
+                  })
                 }
               >
                 Review merge
-              </button>
+              </RequestButton>
               <span className="ml-auto text-sm uppercase text-slate-500">
                 {candidate.status}
               </span>

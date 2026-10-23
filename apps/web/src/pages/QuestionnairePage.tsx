@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -87,22 +88,22 @@ function QuestionCard({
             </p>
             {answer.status === "suggested" && (
               <div className="mt-2 flex gap-2">
-                <button
+                <RequestButton
                   className="rounded bg-emerald-700 px-3 py-1 text-sm text-white"
                   onClick={() =>
-                    review.mutate({ id: answer.id, action: "approve" })
+                    review.mutateAsync({ id: answer.id, action: "approve" })
                   }
                 >
                   Approve
-                </button>
-                <button
+                </RequestButton>
+                <RequestButton
                   className="rounded border px-3 py-1 text-sm"
                   onClick={() =>
-                    review.mutate({ id: answer.id, action: "reject" })
+                    review.mutateAsync({ id: answer.id, action: "reject" })
                   }
                 >
                   Reject
-                </button>
+                </RequestButton>
               </div>
             )}
           </div>

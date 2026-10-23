@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -143,13 +144,14 @@ export function ApplicationDetailPage() {
                 Factual answers may be filled from evidence. Subjective drafts
                 remain suggestions until approved.
               </p>
-              <button
+              <RequestButton
+                pending={prefill.isPending}
                 className="rounded bg-indigo-700 px-3 py-2 text-sm text-white"
                 disabled={prefill.isPending}
-                onClick={() => prefill.mutate()}
+                onClick={() => prefill.mutateAsync()}
               >
                 Run Prefill
-              </button>
+              </RequestButton>
             </div>
             <List empty="No questionnaires yet.">
               {(workspace.questionnaires.data?.data ?? []).map((v) => (
@@ -282,8 +284,10 @@ export function ApplicationDetailPage() {
             runs={runs.data?.data ?? []}
             sources={sources.data?.data ?? []}
             findings={findings.data?.data ?? []}
-            onReview={(finding, status) => review.mutate({ finding, status })}
-            onApply={() => apply.mutate()}
+            onReview={(finding, status) =>
+              review.mutateAsync({ finding, status })
+            }
+            onApply={() => apply.mutateAsync()}
             busy={review.isPending || apply.isPending}
           />
         )}
@@ -422,8 +426,8 @@ function ResearchPanel({
   runs: import("../features/application/types").ResearchRun[];
   sources: import("../features/application/types").ResearchSource[];
   findings: import("../features/application/types").ResearchFinding[];
-  onReview: (id: string, status: "accepted" | "rejected") => void;
-  onApply: () => void;
+  onReview: (id: string, status: "accepted" | "rejected") => Promise<unknown>;
+  onApply: () => Promise<unknown>;
   busy: boolean;
 }) {
   return (
@@ -479,31 +483,33 @@ function ResearchPanel({
             </p>
             {v.reviewStatus === "pending" && (
               <div className="mt-2 flex gap-2">
-                <button
+                <RequestButton
+                  disabled={busy}
                   className="text-sm text-green-700"
                   onClick={() => onReview(v.id, "accepted")}
                 >
                   Accept
-                </button>
-                <button
+                </RequestButton>
+                <RequestButton
+                  disabled={busy}
                   className="text-sm text-red-700"
                   onClick={() => onReview(v.id, "rejected")}
                 >
                   Reject
-                </button>
+                </RequestButton>
               </div>
             )}
           </div>
         ))}
       </div>
       {findings.length > 0 && (
-        <button
+        <RequestButton
           className="mt-4 rounded border px-3 py-2 text-sm disabled:opacity-50"
           disabled={busy || findings.some((v) => v.reviewStatus === "pending")}
           onClick={onApply}
         >
           Apply accepted findings
-        </button>
+        </RequestButton>
       )}
     </div>
   );

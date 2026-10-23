@@ -303,17 +303,42 @@ func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	items, err := h.service.ListResearchTasks(r.Context(), filters)
+	page, pageSize := 1, 20
+	for _, param := range []struct {
+		name   string
+		target *int
+		max    int
+	}{{"page", &page, 1000000}, {"pageSize", &pageSize, 100}} {
+		if r.URL.Query().Has(param.name) {
+			value, err := strconv.Atoi(r.URL.Query().Get(param.name))
+			if err != nil || value < 1 || value > param.max {
+				response.Error(w, http.StatusBadRequest, "INVALID_PAGINATION", param.name+" is out of range")
+				return
+			}
+			*param.target = value
+		}
+	}
+	items, total, err := h.service.ListResearchTaskPage(r.Context(), filters, page, pageSize)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
 	}
 	result := researchTaskResponses(items)
-	response.Collection(w, result, len(result))
+	response.JSON(w, http.StatusOK, map[string]any{"data": result, "meta": map[string]any{
+		"count": len(result), "total": total, "page": page, "pageSize": pageSize, "totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
+	}})
 }
 
 func (h *Handler) researchTaskFilters(w http.ResponseWriter, r *http.Request) (ResearchTaskFilters, bool) {
 	filters := ResearchTaskFilters{}
+	if raw := r.URL.Query().Get("parentTaskId"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			response.Error(w, 400, "INVALID_PARENT_TASK_ID", "parentTaskId must be a UUID")
+			return filters, false
+		}
+		filters.ParentTaskID = &id
+	}
 	if raw := r.URL.Query().Get("userId"); raw != "" {
 		id, err := uuid.Parse(raw)
 		if err != nil {
@@ -330,6 +355,13 @@ func (h *Handler) researchTaskFilters(w http.ResponseWriter, r *http.Request) (R
 	}
 	if value := r.URL.Query().Get("priority"); value != "" {
 		filters.Priority = &value
+	}
+	if value := r.URL.Query().Get("sortBy"); value != "" {
+		if value != "createdAt" && value != "priority" && value != "dueAt" {
+			response.Error(w, http.StatusBadRequest, "INVALID_SORT", "sortBy must be createdAt, priority or dueAt")
+			return ResearchTaskFilters{}, false
+		}
+		filters.SortBy = value
 	}
 	return filters, true
 }
@@ -363,7 +395,7 @@ func (h *Handler) PollResearchTasks(w http.ResponseWriter, r *http.Request) {
 		limit = parsed
 	}
 	status := "queued"
-	items, err := h.service.ListResearchTasks(r.Context(), ResearchTaskFilters{Status: &status, Limit: limit, OldestFirst: true})
+	items, err := h.service.ListResearchTasks(r.Context(), ResearchTaskFilters{Status: &status, Limit: limit, SortBy: "priority", OldestFirst: true})
 	if err != nil {
 		h.writeError(w, r, err)
 		return

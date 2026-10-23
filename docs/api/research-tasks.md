@@ -24,7 +24,7 @@ Each context is a user-owned question and answer. Context ownership is validated
 
 Scoped research agents consume queued work through:
 
-- `GET /api/v1/agent/research-tasks?limit=N` — polls the oldest queued tasks; `N` defaults to 10 and is capped at 50.
+- `GET /api/v1/agent/research-tasks?limit=N` — polls queued tasks by priority, earliest deadline, then oldest creation time; `N` defaults to 10 and is capped at 50.
 - `POST /api/v1/agent/research-tasks/{taskID}/start` — atomically claims one task and returns both the task and its new `researchRun`.
 - `GET .../{taskID}/links|contexts|effective-profile|runs` — loads agent input, resolves the selected profile through the profile service, and recovers the current run ID.
 - `POST .../{taskID}/sources|findings` — persists typed, provenance-bearing results.
@@ -32,3 +32,28 @@ Scoped research agents consume queued work through:
 - `POST .../{taskID}/complete` with `{ "researchRunId": "..." }` — finishes submission and marks the task/run `review_required`.
 
 The API never performs live or mock research while handling `start`. If several agents poll the same task, only the first successful claim may transition it from `queued` to `running`.
+
+## Listing, scheduling, and pagination
+
+`GET /api/v1/research-tasks` accepts `page` (default 1, maximum 1000000),
+`pageSize` (default 20, maximum 100), and `sortBy` (`createdAt`, `priority`,
+or `dueAt`). Filters are `userId`, `parentTaskId`, `status`, `taskType`, and
+`priority`. Ownership applies to both the rows and the total count.
+
+The response has `data` and `meta`: `count` is the number of rows on this
+page, `total` is the filtered total, and `page`, `pageSize`, and `totalPages`
+describe pagination. An empty result has `totalPages: 0`. Out-of-range pages
+return an empty page; invalid page, page size, or sort values return HTTP 400.
+
+Each task exposes `priority` (defaults to `normal`) and `dueAt` (UTC timestamp,
+or `null` when unknown). This is the deadline for completing research, separate
+from sourced scholarship/application deadlines. Creation accepts both fields.
+Draft updates accept `dueAt` or `clearDueAt: true` to remove a deadline.
+
+Priority sorting puts urgent, high, normal, then low tasks first, with earliest
+known deadlines first within a priority. Deadline sorting puts unknown deadlines
+last. Creation time and UUID break ties consistently.
+
+Agent polling retains its `limit` contract, returning queued tasks by priority,
+then earliest known deadline, then oldest creation time and UUID. The export
+endpoint returns the complete filtered set, without page or page-size limits.

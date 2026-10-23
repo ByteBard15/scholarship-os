@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
@@ -139,12 +140,13 @@ export function ApplicationsPage() {
           value={intakeYear}
           onChange={(e) => setIntakeYear(e.target.value)}
         />
-        <button
+        <RequestButton
+          pending={create.isPending}
           className="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50"
           disabled={!name || !parent || create.isPending}
         >
           Create application
-        </button>
+        </RequestButton>
         {create.isError && (
           <p className="text-sm text-red-700 md:col-span-3">
             {create.error.message}

@@ -1,3 +1,4 @@
+import { RequestButton } from "../../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { profileKeys, updateProfile } from "./api";
@@ -59,12 +60,13 @@ export function ProfileMetadataForm({ profile }: { profile: Profile }) {
         </label>
       )}
       <div className="flex items-center gap-3 md:col-span-2">
-        <button
+        <RequestButton
+          pending={mutation.isPending}
           className="rounded bg-indigo-700 px-4 py-2 text-white disabled:opacity-50"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? "Saving…" : "Save profile details"}
-        </button>
+        </RequestButton>
         {mutation.isSuccess && (
           <span className="text-sm text-emerald-700">Saved</span>
         )}

@@ -33,6 +33,7 @@ type PrefillPersistence struct {
 type Repository interface {
 	CreateResearchTask(context.Context, *ResearchTask, []ResearchTaskLink, []ResearchContext, []uuid.UUID) error
 	ListResearchTasks(context.Context, ResearchTaskFilters) ([]ResearchTask, error)
+	CountResearchTasks(context.Context, ResearchTaskFilters) (int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*ResearchTask, error)
 	UpdateResearchTask(context.Context, *ResearchTask) error
 	DeleteResearchTask(context.Context, *ResearchTask) error

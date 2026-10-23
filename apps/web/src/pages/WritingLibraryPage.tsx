@@ -1,3 +1,4 @@
+import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { CollapsibleText } from "../components/CollapsibleText";
@@ -137,13 +138,14 @@ export function WritingLibraryPage() {
             onChange={(event) => setContent(event.target.value)}
           />
         </label>
-        <button
+        <RequestButton
+          pending={create.isPending}
           className="rounded bg-indigo-700 px-4 py-2 text-white md:col-span-2 disabled:opacity-50"
           disabled={create.isPending}
           type="submit"
         >
           {create.isPending ? "Saving…" : "Save writing sample"}
-        </button>
+        </RequestButton>
         {create.isError && (
           <p className="text-sm text-red-700 md:col-span-2">
             {create.error.message}
@@ -172,14 +174,15 @@ export function WritingLibraryPage() {
                   {sample.status}
                 </p>
               </div>
-              <button
+              <RequestButton
+                pending={remove.isPending}
                 className="text-sm text-red-700"
                 disabled={remove.isPending}
-                onClick={() => remove.mutate(sample.id)}
+                onClick={() => remove.mutateAsync(sample.id)}
                 type="button"
               >
                 Delete
-              </button>
+              </RequestButton>
             </div>
             {sample.description && (
               <p className="mt-3 text-sm text-slate-600">
