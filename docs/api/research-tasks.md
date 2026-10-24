@@ -4,6 +4,7 @@
 - `GET|PATCH|DELETE /api/v1/research-tasks/{taskID}`
 - `POST .../{taskID}/queue|cancel|retry`
 - `GET .../{taskID}/outputs`
+- `GET .../{taskID}/proposals` — all proposals belonging to this task, including approved, rejected, and proposals already linked to an Application.
 - `GET|POST .../{taskID}/contexts`
 - `DELETE .../{taskID}/contexts/{contextID}`
 - `GET|POST .../{taskID}/links`
@@ -38,7 +39,7 @@ The API never performs live or mock research while handling `start`. If several 
 `GET /api/v1/research-tasks` accepts `page` (default 1, maximum 1000000),
 `pageSize` (default 20, maximum 100), and `sortBy` (`createdAt`, `priority`,
 or `dueAt`). Filters are `userId`, `parentTaskId`, `status`, `taskType`, and
-`priority`. Ownership applies to both the rows and the total count.
+`priority`, and `proposalState` (`any`, `none`, or `approved`). Proposal filters use existence checks before pagination; `approved` includes approvals already materialized into Applications. Ownership applies to both the rows and the total count.
 
 The response has `data` and `meta`: `count` is the number of rows on this
 page, `total` is the filtered total, and `page`, `pageSize`, and `totalPages`
@@ -70,3 +71,7 @@ separate. Vague wording and conflicts are preserved; pending findings remain
 marked as awaiting review. An empty array means research has not established a
 sourced deadline. The UI displays these findings, not the internal `dueAt`
 scheduling field, and does not ask users to enter a research deadline.
+
+The Research Inbox stores status, task type, priority, proposal state, sorting,
+page size and page in URL query parameters. Opening a task and returning through
+its Research Inbox link preserves those selections.

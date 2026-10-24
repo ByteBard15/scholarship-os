@@ -76,6 +76,19 @@ func (r *GORMRepository) researchTaskQuery(ctx context.Context, filters Research
 	if filters.Priority != nil {
 		query = query.Where("COALESCE(priority, 'normal') = ?", *filters.Priority)
 	}
+	if filters.ProposalState != "" {
+		proposals := r.db.WithContext(ctx).Model(&ApplicationProposal{}).Select("1").
+			Where("application_proposals.research_task_id = research_tasks.id").
+			Where("application_proposals.user_id = research_tasks.user_id")
+		if filters.ProposalState == "approved" {
+			proposals = proposals.Where("application_proposals.status = ?", "approved")
+		}
+		if filters.ProposalState == "none" {
+			query = query.Where("NOT EXISTS (?)", proposals)
+		} else {
+			query = query.Where("EXISTS (?)", proposals)
+		}
+	}
 	return query
 }
 
@@ -1171,4 +1184,9 @@ func (r *GORMRepository) ListTaskDeadlineFindings(ctx context.Context, taskIDs [
 		Where("findings.category = ? AND findings.review_status <> ?", "deadline", "rejected").
 		Order("findings.created_at ASC, findings.id ASC").Find(&items).Error
 	return items, err
+}
+
+func (r *GORMRepository) ListTaskProposals(ctx context.Context, taskID uuid.UUID) (items []ApplicationProposal, err error) {
+	err = r.db.WithContext(ctx).Where("research_task_id = ?", taskID).Order("created_at ASC").Order("id ASC").Find(&items).Error
+	return
 }

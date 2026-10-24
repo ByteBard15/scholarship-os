@@ -360,6 +360,13 @@ func (h *Handler) researchTaskFilters(w http.ResponseWriter, r *http.Request) (R
 	if value := r.URL.Query().Get("priority"); value != "" {
 		filters.Priority = &value
 	}
+	if value := r.URL.Query().Get("proposalState"); value != "" {
+		if value != "any" && value != "none" && value != "approved" {
+			response.Error(w, http.StatusBadRequest, "INVALID_PROPOSAL_STATE", "proposalState must be any, none or approved")
+			return ResearchTaskFilters{}, false
+		}
+		filters.ProposalState = value
+	}
 	if value := r.URL.Query().Get("sortBy"); value != "" {
 		if value != "createdAt" && value != "priority" && value != "dueAt" {
 			response.Error(w, http.StatusBadRequest, "INVALID_SORT", "sortBy must be createdAt, priority or dueAt")
@@ -1175,3 +1182,16 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) 
 }
 
 func boolQuery(value string) bool { return strings.EqualFold(value, "true") }
+
+func (h *Handler) ListTaskProposals(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.id(w, r, "taskID")
+	if !ok {
+		return
+	}
+	items, err := h.service.ListTaskProposals(r.Context(), id)
+	if err != nil {
+		h.writeError(w, r, err)
+		return
+	}
+	response.Collection(w, items, len(items))
+}

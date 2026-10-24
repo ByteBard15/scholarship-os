@@ -1,7 +1,7 @@
 import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   attachTaskContexts,
   approveProposal,
@@ -13,7 +13,7 @@ import {
   workflowKeys,
 } from "../features/workflow/api";
 import {
-  useProposals,
+  useTaskProposals,
   useResearchTask,
   useResearchContexts,
   useResearchTasks,
@@ -31,6 +31,7 @@ import { CollapsibleText } from "../components/CollapsibleText";
 
 export function ResearchDetailPage() {
   const { id = "" } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const userId = user?.id ?? "";
   const task = useResearchTask(id),
@@ -39,7 +40,7 @@ export function ResearchDetailPage() {
     contexts = useResearchContexts(userId),
     outputs = useTaskOutputs(id),
     runs = useTaskRuns(id),
-    proposals = useProposals(userId),
+    proposals = useTaskProposals(id),
     profiles = useProfiles(userId),
     relatedTasks = useResearchTasks(
       `?userId=${userId}&parentTaskId=${id}&pageSize=100`,
@@ -83,7 +84,21 @@ export function ResearchDetailPage() {
   });
   const approve = useMutation({
     mutationFn: (proposalId: string) => approveProposal(proposalId, parent),
-    onSuccess: () => void refresh(),
+    onSuccess: async (result) => {
+      client.setQueryData<typeof proposals.data>(
+        [...workflowKeys.task(id), "proposals"],
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: current.data.map((proposal) =>
+                  proposal.id === result.data.id ? result.data : proposal,
+                ),
+              }
+            : current,
+      );
+      await refresh();
+    },
   });
   const review = useMutation({
     mutationFn: ({
@@ -104,7 +119,10 @@ export function ResearchDetailPage() {
         .sort(compareProposals) ?? [];
   return (
     <section>
-      <Link className="text-sm text-indigo-700" to="/research">
+      <Link
+        className="text-sm text-indigo-700"
+        to={`/research${location.search}`}
+      >
         ← Research Inbox
       </Link>
       <h1 className="mt-3 text-3xl font-semibold">{item.title}</h1>
@@ -290,168 +308,178 @@ export function ResearchDetailPage() {
             </p>
           )}
         </div>
-        {taskProposals.length ? (
-          taskProposals.map((proposal) => (
-            <article key={proposal.id} className="mb-3 rounded border p-4">
-              <div className="flex flex-wrap justify-between gap-2">
-                <div>
-                  <h3 className="font-medium">{proposal.name}</h3>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {proposal.rank ? `Rank #${proposal.rank} · ` : ""}
-                    <span className="font-medium uppercase text-indigo-700">
-                      {proposal.priority} priority
-                    </span>
-                  </p>
+        {proposals.isPending && <p role="status">Loading proposals…</p>}
+        {proposals.isError && (
+          <p role="alert" className="mb-3 text-red-700">
+            Could not load proposals: {proposals.error.message}
+          </p>
+        )}
+        {taskProposals.length
+          ? taskProposals.map((proposal) => (
+              <article key={proposal.id} className="mb-3 rounded border p-4">
+                <div className="flex flex-wrap justify-between gap-2">
+                  <div>
+                    <h3 className="font-medium">{proposal.name}</h3>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {proposal.rank ? `Rank #${proposal.rank} · ` : ""}
+                      <span className="font-medium uppercase text-indigo-700">
+                        {proposal.priority} priority
+                      </span>
+                    </p>
+                  </div>
+                  <span className="text-xs uppercase">{proposal.status}</span>
                 </div>
-                <span className="text-xs uppercase">{proposal.status}</span>
-              </div>
-              <div className="mt-4 grid gap-3 lg:grid-cols-3">
-                <ProposalSection
-                  title="Institution"
-                  value={proposal.proposedInstitution}
-                />
-                <ProposalSection
-                  title="Programme"
-                  value={proposal.proposedProgramme}
-                />
-                <ProposalSection
-                  title="Scholarship & funding"
-                  value={proposal.proposedScholarship}
-                />
-              </div>
-              <dl className="mt-4 grid gap-3 rounded bg-slate-50 p-3 text-sm sm:grid-cols-3">
-                <SummaryItem label="Country" value={proposal.country} />
-                <SummaryItem label="Intake" value={proposal.intake} />
-                <SummaryItem label="Intake year" value={proposal.intakeYear} />
-              </dl>
-              {proposal.summary && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Summary
-                  </h4>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                    {proposal.summary}
-                  </p>
+                <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                  <ProposalSection
+                    title="Institution"
+                    value={proposal.proposedInstitution}
+                  />
+                  <ProposalSection
+                    title="Programme"
+                    value={proposal.proposedProgramme}
+                  />
+                  <ProposalSection
+                    title="Scholarship & funding"
+                    value={proposal.proposedScholarship}
+                  />
                 </div>
-              )}
-              {proposal.reasoningSummary && (
-                <div className="mt-4">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Fit and review notes
-                  </h4>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                    {proposal.reasoningSummary}
-                  </p>
-                </div>
-              )}
-              <p className="mt-2 text-xs text-slate-500">
-                Confidence:{" "}
-                {proposal.confidence == null
-                  ? "not supplied"
-                  : `${Math.round(proposal.confidence * 100)}%`}{" "}
-                · {proposal.sources.length} provenance source(s)
-              </p>
-              {proposal.sources.length > 0 && (
-                <div className="mt-3">
-                  <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Supporting sources
-                  </h4>
-                  <ul className="mt-1 grid gap-1">
-                    {proposal.sources.map((source) => (
-                      <li key={source.id} className="text-sm">
-                        <a
-                          className="text-indigo-700 hover:underline"
-                          href={source.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          {source.title ?? source.url}
-                        </a>{" "}
-                        <span className="text-xs text-slate-500">
-                          · {source.isOfficial ? "official" : "unofficial"}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <div className="mt-3 flex gap-2">
-                {proposal.status === "pending" && (
-                  <>
+                <dl className="mt-4 grid gap-3 rounded bg-slate-50 p-3 text-sm sm:grid-cols-3">
+                  <SummaryItem label="Country" value={proposal.country} />
+                  <SummaryItem label="Intake" value={proposal.intake} />
+                  <SummaryItem
+                    label="Intake year"
+                    value={proposal.intakeYear}
+                  />
+                </dl>
+                {proposal.summary && (
+                  <div className="mt-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Summary
+                    </h4>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                      {proposal.summary}
+                    </p>
+                  </div>
+                )}
+                {proposal.reasoningSummary && (
+                  <div className="mt-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Fit and review notes
+                    </h4>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                      {proposal.reasoningSummary}
+                    </p>
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-slate-500">
+                  Confidence:{" "}
+                  {proposal.confidence == null
+                    ? "not supplied"
+                    : `${Math.round(proposal.confidence * 100)}%`}{" "}
+                  · {proposal.sources.length} provenance source(s)
+                </p>
+                {proposal.sources.length > 0 && (
+                  <div className="mt-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Supporting sources
+                    </h4>
+                    <ul className="mt-1 grid gap-1">
+                      {proposal.sources.map((source) => (
+                        <li key={source.id} className="text-sm">
+                          <a
+                            className="text-indigo-700 hover:underline"
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {source.title ?? source.url}
+                          </a>{" "}
+                          <span className="text-xs text-slate-500">
+                            · {source.isOfficial ? "official" : "unofficial"}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="mt-3 flex gap-2">
+                  {proposal.status === "pending" && (
+                    <>
+                      <RequestButton
+                        pending={
+                          approve.isPending && approve.variables === proposal.id
+                        }
+                        disabled={
+                          !parent || approve.isPending || review.isPending
+                        }
+                        onClick={() => approve.mutateAsync(proposal.id)}
+                        className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
+                      >
+                        {approve.isPending
+                          ? "Approving proposal…"
+                          : "Approve proposal for agent"}
+                      </RequestButton>
+                      <RequestButton
+                        disabled={approve.isPending || review.isPending}
+                        onClick={() =>
+                          review.mutateAsync({
+                            proposalId: proposal.id,
+                            action: "reject",
+                          })
+                        }
+                        className="rounded border px-3 py-1.5 text-sm"
+                      >
+                        Reject
+                      </RequestButton>
+                    </>
+                  )}
+                  {proposal.status === "rejected" && (
                     <RequestButton
-                      pending={
-                        approve.isPending && approve.variables === proposal.id
-                      }
-                      disabled={
-                        !parent || approve.isPending || review.isPending
-                      }
-                      onClick={() => approve.mutateAsync(proposal.id)}
-                      className="rounded bg-emerald-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
-                    >
-                      {approve.isPending
-                        ? "Approving proposal…"
-                        : "Approve proposal for agent"}
-                    </RequestButton>
-                    <RequestButton
-                      disabled={approve.isPending || review.isPending}
                       onClick={() =>
                         review.mutateAsync({
                           proposalId: proposal.id,
-                          action: "reject",
+                          action: "reopen",
                         })
                       }
                       className="rounded border px-3 py-1.5 text-sm"
                     >
-                      Reject
+                      Reopen
                     </RequestButton>
-                  </>
-                )}
-                {proposal.status === "rejected" && (
-                  <RequestButton
-                    onClick={() =>
-                      review.mutateAsync({
-                        proposalId: proposal.id,
-                        action: "reopen",
-                      })
-                    }
-                    className="rounded border px-3 py-1.5 text-sm"
-                  >
-                    Reopen
-                  </RequestButton>
-                )}
-              </div>
-              {proposal.status === "pending" &&
-                !parent &&
-                parents.length > 0 && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    Select an application profile parent above to enable
-                    approval.
+                  )}
+                </div>
+                {proposal.status === "pending" &&
+                  !parent &&
+                  parents.length > 0 && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      Select an application profile parent above to enable
+                      approval.
+                    </p>
+                  )}
+                {proposal.status === "approved" && !proposal.applicationId && (
+                  <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    Approved. Waiting for an application agent to create the
+                    Application workspace.
                   </p>
                 )}
-              {proposal.status === "approved" && !proposal.applicationId && (
-                <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Approved. Waiting for an application agent to create the
-                  Application workspace.
-                </p>
-              )}
-              {proposal.applicationId && (
-                <Link
-                  className="mt-3 inline-block text-sm text-indigo-700 hover:underline"
-                  to={`/applications/${proposal.applicationId}`}
-                >
-                  Open created application →
-                </Link>
-              )}
-              {approve.isError && (
-                <p className="mt-2 text-sm text-red-700">
-                  Approval failed: {approve.error.message}
-                </p>
-              )}
-            </article>
-          ))
-        ) : (
-          <p className="text-sm text-slate-500">No proposals yet.</p>
-        )}
+                {proposal.applicationId && (
+                  <Link
+                    className="mt-3 inline-block text-sm text-indigo-700 hover:underline"
+                    to={`/applications/${proposal.applicationId}`}
+                  >
+                    Open created application →
+                  </Link>
+                )}
+                {approve.isError && (
+                  <p className="mt-2 text-sm text-red-700">
+                    Approval failed: {approve.error.message}
+                  </p>
+                )}
+              </article>
+            ))
+          : !proposals.isPending &&
+            !proposals.isError && (
+              <p className="text-sm text-slate-500">No proposals yet.</p>
+            )}
       </Panel>
       <div className="grid gap-5 md:grid-cols-2">
         <Panel title="Outputs">

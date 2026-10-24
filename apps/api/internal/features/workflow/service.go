@@ -787,6 +787,21 @@ func (s *Service) ListProposalResponses(ctx context.Context, userID *uuid.UUID, 
 	if err != nil {
 		return nil, err
 	}
+	return s.proposalResponses(ctx, items)
+}
+
+func (s *Service) ListTaskProposals(ctx context.Context, taskID uuid.UUID) ([]ApplicationProposalResponse, error) {
+	if _, err := s.GetResearchTask(ctx, taskID); err != nil {
+		return nil, err
+	}
+	items, err := s.repo.ListTaskProposals(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	return s.proposalResponses(ctx, items)
+}
+
+func (s *Service) proposalResponses(ctx context.Context, items []ApplicationProposal) ([]ApplicationProposalResponse, error) {
 	result := make([]ApplicationProposalResponse, 0, len(items))
 	for i := range items {
 		sources, sourceErr := s.repo.ListProposalSources(ctx, items[i].ID)

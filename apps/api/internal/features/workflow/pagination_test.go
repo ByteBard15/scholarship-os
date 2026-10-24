@@ -74,7 +74,7 @@ func TestResearchListingMetadataAndUnknownDeadline(t *testing.T) {
 
 func TestResearchListingRejectsInvalidPaginationAndSort(t *testing.T) {
 	handler := NewHandler(nil, validator.New())
-	for _, query := range []string{"page=0", "page=-1", "page=abc", "page=1000001", "pageSize=0", "pageSize=101", "pageSize=", "sortBy=invalid", "parentTaskId=invalid"} {
+	for _, query := range []string{"page=0", "page=-1", "page=abc", "page=1000001", "pageSize=0", "pageSize=101", "pageSize=", "sortBy=invalid", "parentTaskId=invalid", "proposalState=pending"} {
 		t.Run(query, func(t *testing.T) {
 			w := httptest.NewRecorder()
 			handler.ListResearchTasks(w, httptest.NewRequest(http.MethodGet, "/?"+query, nil))
@@ -150,5 +150,15 @@ func TestScholarshipDeadlinesOnlyUseFinishedOwnedResearch(t *testing.T) {
 	tasks[0].UserID = other
 	if _, err := service.ResearchTaskResponses(ctx, tasks); err == nil {
 		t.Fatal("cross-workspace enrichment allowed")
+	}
+}
+
+func TestResearchProposalFilterReachesRowsAndCount(t *testing.T) {
+	repo := &listingRepository{}
+	handler := NewHandler(NewService(repo, nil, nil, nil, nil), validator.New())
+	w := httptest.NewRecorder()
+	handler.ListResearchTasks(w, httptest.NewRequest(http.MethodGet, "/?proposalState=approved", nil))
+	if w.Code != http.StatusOK || repo.countFilters.ProposalState != "approved" || repo.listFilters.ProposalState != "approved" {
+		t.Fatalf("proposal filter missing from rows or total: %d %+v %+v", w.Code, repo.countFilters, repo.listFilters)
 	}
 }

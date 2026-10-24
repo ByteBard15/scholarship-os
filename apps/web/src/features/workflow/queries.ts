@@ -12,6 +12,7 @@ import {
   listTaskFindings,
   listTaskLinks,
   listTaskOutputs,
+  listTaskProposals,
   listTaskRuns,
   listTaskSources,
   workflowKeys,
@@ -69,6 +70,12 @@ export const useTaskFindings = (task: string, run: string) =>
     queryKey: [...workflowKeys.task(task), run, "findings"],
     queryFn: () => listTaskFindings(task, run),
     enabled: Boolean(task && run),
+  });
+export const useTaskProposals = (task: string) =>
+  useQuery({
+    queryKey: [...workflowKeys.task(task), "proposals"],
+    queryFn: () => listTaskProposals(task),
+    enabled: Boolean(task),
   });
 export const useProposals = (userId?: string) =>
   useQuery({

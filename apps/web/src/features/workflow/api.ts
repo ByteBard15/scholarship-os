@@ -150,6 +150,11 @@ export const listTaskFindings = (task: string, run: string) =>
     `/api/v1/research-tasks/${task}/runs/${run}/findings`,
   );
 
+export const listTaskProposals = (task: string) =>
+  getJSON<Collection<ApplicationProposal>>(
+    `/api/v1/research-tasks/${task}/proposals`,
+  );
+
 export const listProposals = (userId?: string) =>
   getJSON<Collection<ApplicationProposal>>(
     `/api/v1/application-proposals${userId ? `?userId=${userId}` : ""}`,

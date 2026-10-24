@@ -112,15 +112,16 @@ type UpdateResearchTaskRequest struct {
 }
 
 type ResearchTaskFilters struct {
-	ParentTaskID *uuid.UUID
-	UserID       *uuid.UUID
-	Status       *string
-	TaskType     *string
-	Priority     *string
-	Limit        int
-	Offset       int
-	SortBy       string
-	OldestFirst  bool
+	ProposalState string
+	ParentTaskID  *uuid.UUID
+	UserID        *uuid.UUID
+	Status        *string
+	TaskType      *string
+	Priority      *string
+	Limit         int
+	Offset        int
+	SortBy        string
+	OldestFirst   bool
 }
 
 type CompleteAgentResearchRequest struct {

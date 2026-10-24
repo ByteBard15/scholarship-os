@@ -1,7 +1,7 @@
 import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   createResearchTask,
   exportResearchTasks,
@@ -23,20 +23,53 @@ export function ResearchPage() {
   const { user } = useAuth();
   const userId = user?.id ?? "";
   const [createOpen, setCreateOpen] = useState(false);
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const pageSize = [10, 20, 50, 100].includes(
+    Number(searchParams.get("pageSize")),
+  )
+    ? Number(searchParams.get("pageSize"))
+    : 20;
+  const sortBy = searchParams.get("sortBy") || "priority";
+  const status = searchParams.get("status") || "";
+  const taskType = searchParams.get("taskType") || "";
+  const priority = searchParams.get("priority") || "";
+  const proposalState = searchParams.get("proposalState") || "";
   const [pageAction, setPageAction] = useState<"previous" | "next" | null>(
     null,
   );
-  const [pageSize, setPageSize] = useState(20);
-  const [sortBy, setSortBy] = useState("priority");
-  const [status, setStatus] = useState("");
-  const [taskType, setTaskType] = useState("");
-  const [priority, setPriority] = useState("");
+  function setFilter(key: string, value: string) {
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        next.set("page", "1");
+        return next;
+      },
+      { replace: true },
+    );
+  }
+  function setPage(value: number) {
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.set("page", String(value));
+        return next;
+      },
+      { replace: true },
+    );
+  }
   const query = new URLSearchParams(
     Object.fromEntries(
-      Object.entries({ userId, status, taskType, priority, sortBy }).filter(
-        ([, value]) => value,
-      ),
+      Object.entries({
+        userId,
+        status,
+        taskType,
+        priority,
+        sortBy,
+        proposalState,
+      }).filter(([, value]) => value),
     ),
   ).toString();
   const tasks = useResearchTasks(`?${query}&page=${page}&pageSize=${pageSize}`);
@@ -445,8 +478,7 @@ export function ResearchPage() {
           aria-label="Filter by status"
           value={status}
           onChange={(event) => {
-            setStatus(event.target.value);
-            setPage(1);
+            setFilter("status", event.target.value);
           }}
         >
           <option value="">All statuses</option>
@@ -463,8 +495,7 @@ export function ResearchPage() {
           placeholder="Task type filter"
           value={taskType}
           onChange={(event) => {
-            setTaskType(event.target.value);
-            setPage(1);
+            setFilter("taskType", event.target.value);
           }}
         />
         <select
@@ -472,8 +503,7 @@ export function ResearchPage() {
           aria-label="Filter by priority"
           value={priority}
           onChange={(event) => {
-            setPriority(event.target.value);
-            setPage(1);
+            setFilter("priority", event.target.value);
           }}
         >
           <option value="">All priorities</option>
@@ -482,14 +512,24 @@ export function ResearchPage() {
           <option value="high">High</option>
           <option value="urgent">Urgent</option>
         </select>
+        <select
+          className="rounded border px-3 py-2"
+          aria-label="Filter by proposals"
+          value={proposalState}
+          onChange={(event) => setFilter("proposalState", event.target.value)}
+        >
+          <option value="">All proposal states</option>
+          <option value="any">Has proposals</option>
+          <option value="none">No proposals</option>
+          <option value="approved">Has approved proposals</option>
+        </select>
         <label className="flex items-center gap-2 text-sm">
           Sort by
           <select
             className="rounded border px-3 py-2"
             value={sortBy}
             onChange={(event) => {
-              setSortBy(event.target.value);
-              setPage(1);
+              setFilter("sortBy", event.target.value);
             }}
           >
             <option value="priority">Priority</option>
@@ -515,7 +555,10 @@ export function ResearchPage() {
       <div className="mt-4 grid gap-3">
         {tasks.data?.data.map((task) => (
           <article key={task.id} className="rounded-lg border bg-white p-4">
-            <Link to={`/research/${task.id}`} className="block">
+            <Link
+              to={`/research/${task.id}?${searchParams.toString()}`}
+              className="block"
+            >
               <div className="flex justify-between">
                 <span className="font-medium">{task.title}</span>
                 <span className="text-xs uppercase text-indigo-700">
@@ -542,8 +585,7 @@ export function ResearchPage() {
             className="rounded border px-2 py-1"
             value={pageSize}
             onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              setPage(1);
+              setFilter("pageSize", event.target.value);
             }}
           >
             {[10, 20, 50, 100].map((size) => (
@@ -566,7 +608,7 @@ export function ResearchPage() {
             pending={tasks.isFetching && pageAction === "previous"}
             onClick={() => {
               setPageAction("previous");
-              setPage((value) => value - 1);
+              setPage(page - 1);
             }}
           >
             Previous
@@ -582,7 +624,7 @@ export function ResearchPage() {
             pending={tasks.isFetching && pageAction === "next"}
             onClick={() => {
               setPageAction("next");
-              setPage((value) => value + 1);
+              setPage(page + 1);
             }}
           >
             Next

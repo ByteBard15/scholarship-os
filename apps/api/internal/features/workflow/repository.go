@@ -37,6 +37,7 @@ type TaskDeadlineFinding struct {
 }
 
 type Repository interface {
+	ListTaskProposals(context.Context, uuid.UUID) ([]ApplicationProposal, error)
 	ListTaskDeadlineFindings(context.Context, []uuid.UUID) ([]TaskDeadlineFinding, error)
 
 	CreateResearchTask(context.Context, *ResearchTask, []ResearchTaskLink, []ResearchContext, []uuid.UUID) error

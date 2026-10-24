@@ -25,6 +25,7 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.ResearchTask("retry research task")).Post("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/retry", h.transitionTask("retry"))
 	r.With(owners.ResearchTask("restart research task")).Post("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/restart", h.RestartResearchTask)
 	r.With(owners.ResearchTask("list research task outputs")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/outputs", h.ListTaskOutputs)
+	r.With(owners.ResearchTask("list research task proposals")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/proposals", h.ListTaskProposals)
 	r.With(owners.ResearchTask("list research task links")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/links", h.ListTaskLinks)
 	r.With(owners.ResearchTask("list research task contexts")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/contexts", h.ListTaskContexts)
 	r.With(owners.ResearchTask("attach research task contexts")).Post("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/contexts", h.AttachTaskContexts)

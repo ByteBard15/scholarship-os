@@ -71,3 +71,44 @@ func TestDeadlineQueryUsesLatestRunAndSourcedNonRejectedFindings(t *testing.T) {
 		}
 	}
 }
+
+func TestResearchProposalFiltersUseExistsForRowsAndTotals(t *testing.T) {
+	for _, state := range []string{"any", "none", "approved"} {
+		t.Run(state, func(t *testing.T) {
+			var output bytes.Buffer
+			db, err := gorm.Open(postgres.New(postgres.Config{DSN: "host=localhost user=test dbname=test sslmode=disable"}), &gorm.Config{DryRun: true, DisableAutomaticPing: true, Logger: logger.New(log.New(&output, "", 0), logger.Config{LogLevel: logger.Info})})
+			if err != nil {
+				t.Fatal(err)
+			}
+			repo := &GORMRepository{db: db}
+			owner := uuid.New()
+			filters := ResearchTaskFilters{UserID: &owner, ProposalState: state, Limit: 20}
+			for _, count := range []bool{false, true} {
+				output.Reset()
+				if count {
+					_, err = repo.CountResearchTasks(context.Background(), filters)
+				} else {
+					_, err = repo.ListResearchTasks(context.Background(), filters)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				sql := output.String()
+				for _, want := range []string{owner.String(), "EXISTS (SELECT 1", "application_proposals.research_task_id = research_tasks.id", "application_proposals.user_id = research_tasks.user_id"} {
+					if !strings.Contains(sql, want) {
+						t.Fatalf("missing %q: %s", want, sql)
+					}
+				}
+				if strings.Contains(sql, "NOT EXISTS") != (state == "none") {
+					t.Fatal(sql)
+				}
+				if strings.Contains(sql, "application_proposals.status = 'approved'") != (state == "approved") {
+					t.Fatal(sql)
+				}
+				if strings.Contains(sql, "JOIN") || strings.Contains(sql, "application_id IS NULL") {
+					t.Fatalf("must not duplicate tasks or hide materialized approvals: %s", sql)
+				}
+			}
+		})
+	}
+}
