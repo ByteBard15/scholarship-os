@@ -9,6 +9,8 @@ import (
 	"github.com/byte/scholarship-os/apps/api/internal/features/application"
 	"github.com/byte/scholarship-os/apps/api/internal/features/catalog"
 	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -680,15 +682,21 @@ func proposalDefaultTasks(applicationID uuid.UUID) []application.ApplicationTask
 
 func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 	var findings []application.ResearchFinding
-	if err := tx.Where("research_run_id = ? AND verification_status IN ?", runID, []string{"verified", "supported"}).Find(&findings).Error; err != nil {
+	if err := tx.Where("research_run_id = ? AND verification_status IN ? AND review_status <> ?", runID, []string{"verified", "supported"}, "rejected").Find(&findings).Error; err != nil {
 		return err
 	}
+	validate := validator.New()
 	for i := range findings {
 		finding := &findings[i]
+		value, supported := proposalFindingValue(finding, validate)
+		if !supported {
+			appLogger.Info(tx.Statement.Context, "research finding retained for review during application creation", "finding_id", finding.ID, "category", finding.Category)
+			continue
+		}
 		switch finding.Category {
 		case "requirement":
 			var request application.RequirementRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				mandatory := request.IsMandatory == nil || *request.IsMandatory
 				status := "unknown"
 				if request.Status != nil {
@@ -701,7 +709,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "deadline":
 			var request application.DeadlineRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				record := application.ApplicationDeadline{ApplicationID: applicationID, DeadlineType: request.DeadlineType, Title: request.Title, DeadlineAt: request.DeadlineAt, Timezone: request.Timezone, DatePrecision: request.DatePrecision, RawDeadlineText: request.RawDeadlineText, IsHardDeadline: request.IsHardDeadline != nil && *request.IsHardDeadline, SourceID: finding.SourceID, SourceURL: request.SourceURL, VerifiedAt: request.VerifiedAt, Notes: request.Notes}
 				if err := tx.Create(&record).Error; err != nil {
 					return err
@@ -709,7 +717,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "funding":
 			var request application.FundingRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				record := application.ApplicationFunding{ApplicationID: applicationID, FundingType: request.FundingType, Currency: request.Currency, Amount: request.Amount, AmountPeriod: request.AmountPeriod, TuitionCoverage: request.TuitionCoverage, StipendAmount: request.StipendAmount, StipendPeriod: request.StipendPeriod, TravelCoverage: request.TravelCoverage, InsuranceCoverage: request.InsuranceCoverage, AccommodationCoverage: request.AccommodationCoverage, OtherBenefits: request.OtherBenefits, Conditions: request.Conditions, SourceID: finding.SourceID, SourceURL: request.SourceURL}
 				if err := tx.Create(&record).Error; err != nil {
 					return err
@@ -717,7 +725,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "url":
 			var request application.URLRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				record := application.ApplicationURL{ApplicationID: applicationID, URLType: request.URLType, Label: request.Label, URL: request.URL, IsOfficial: request.IsOfficial}
 				if err := tx.Create(&record).Error; err != nil {
 					return err
@@ -725,7 +733,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "contact":
 			var request application.ContactRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				record := application.ApplicationContact{ApplicationID: applicationID, Name: request.Name, Role: request.Role, Email: request.Email, Phone: request.Phone, Organization: request.Organization, ContactType: request.ContactType, URL: request.URL, Notes: request.Notes, SourceID: finding.SourceID}
 				if err := tx.Create(&record).Error; err != nil {
 					return err
@@ -733,7 +741,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "supervisor":
 			var request application.SupervisorRequest
-			if json.Unmarshal(finding.Value, &request) == nil {
+			if json.Unmarshal(value, &request) == nil {
 				record := application.ApplicationSupervisor{ApplicationID: applicationID, Name: request.Name, Title: request.Title, Department: request.Department, Institution: request.Institution, Email: request.Email, ProfileURL: request.ProfileURL, ResearchAreas: request.ResearchAreas, ContactStatus: request.ContactStatus, Notes: request.Notes, SourceID: finding.SourceID}
 				if err := tx.Create(&record).Error; err != nil {
 					return err
@@ -741,7 +749,7 @@ func applyProposalFindings(tx *gorm.DB, applicationID, runID uuid.UUID) error {
 			}
 		case "questionnaire":
 			var candidate QuestionnaireCandidate
-			if json.Unmarshal(finding.Value, &candidate) == nil {
+			if json.Unmarshal(value, &candidate) == nil {
 				questionnaire := ApplicationQuestionnaire{ApplicationID: applicationID, Title: candidate.Title, Description: candidate.Description, QuestionnaireType: candidate.QuestionnaireType, Status: "not_started", SourceURL: candidate.SourceURL}
 				if err := tx.Create(&questionnaire).Error; err != nil {
 					return err
