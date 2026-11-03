@@ -1,6 +1,8 @@
 package profile
 
 import (
+	"net/http"
+
 	"github.com/byte/scholarship-os/apps/api/internal/features/ownership"
 	"github.com/go-chi/chi/v5"
 )
@@ -51,4 +53,28 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 		r.With(owners.Profile("update "+entry.path+" entry")).Patch(base+"/{sectionID}", h.UpdateSection(entry.kind))
 		r.With(owners.Profile("delete "+entry.path+" entry")).Delete(base+"/{sectionID}", h.DeleteSection(entry.kind))
 	}
+}
+
+func MountAgentRoutes(r chi.Router, h *Handler, owners *ownership.Middleware, scope func(http.Handler) http.Handler) {
+	r.With(scope).Get("/agent/profiles", h.AgentListProfiles)
+	r.With(scope).Post("/agent/profiles", h.AgentCreateDomain)
+	r.With(scope, owners.Profile("agent read personal information")).Get("/agent/profiles/{profileID}/personal-info", h.GetPersonalInfo)
+	r.With(scope, owners.Profile("agent replace personal information")).Put("/agent/profiles/{profileID}/personal-info", h.PutPersonalInfo)
+	r.With(scope, owners.Profile("agent update personal information")).Patch("/agent/profiles/{profileID}/personal-info", h.PatchPersonalInfo)
+	for _, entry := range []struct {
+		path string
+		kind SectionKind
+	}{
+		{"education", EducationKind}, {"employment", EmploymentKind}, {"projects", ProjectsKind}, {"publications", PublicationsKind}, {"articles", ArticlesKind}, {"skills", SkillsKind}, {"research-interests", ResearchInterestsKind}, {"career-goals", CareerGoalsKind}, {"certifications", CertificationsKind}, {"awards", AwardsKind}, {"volunteering", VolunteeringKind},
+	} {
+		base := "/agent/profiles/{profileID}/" + entry.path
+		r.With(scope, owners.Profile("agent list profile section")).Get(base, h.ListSection(entry.kind))
+		r.With(scope, owners.Profile("agent add profile section")).Post(base, h.CreateSection(entry.kind))
+		r.With(scope, owners.Profile("agent get profile section")).Get(base+"/{sectionID}", h.GetSection(entry.kind))
+		r.With(scope, owners.Profile("agent update profile section")).Patch(base+"/{sectionID}", h.UpdateSection(entry.kind))
+	}
+
+	r.With(scope, owners.Profile("agent resolve effective profile")).Get("/agent/profiles/{profileID}/effective", h.AgentGetEffective)
+	r.With(scope, owners.Profile("agent tailor derived profile")).Patch("/agent/profiles/{profileID}", h.AgentUpdateProfile)
+	r.With(scope, owners.Profile("agent tailor section description")).Post("/agent/profiles/{profileID}/overrides", h.AgentCreateDescriptionOverride)
 }

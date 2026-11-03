@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/user"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
 	"github.com/byte/scholarship-os/apps/api/pkg/response"
 	"github.com/go-chi/chi/v5"
@@ -256,6 +257,10 @@ func (h *Handler) decode(w http.ResponseWriter, r *http.Request, dst any) bool {
 }
 func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
+	case errors.Is(err, principal.ErrAuthRequired):
+		response.Error(w, 401, "AUTH_REQUIRED", err.Error())
+	case errors.Is(err, principal.ErrAgentRequired), errors.Is(err, principal.ErrAgentScopeRequired), errors.Is(err, principal.ErrForbidden):
+		response.Error(w, 403, "AGENT_PROFILE_FORBIDDEN", err.Error())
 	case errors.Is(err, user.ErrNotFound):
 		response.Error(w, 404, "USER_NOT_FOUND", user.ErrNotFound.Error())
 	case errors.Is(err, ErrProfileNotFound):

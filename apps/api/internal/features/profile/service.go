@@ -203,12 +203,18 @@ func (s *Service) Update(ctx context.Context, id uuid.UUID, req UpdateProfileReq
 }
 
 func (s *Service) GetPersonalInfo(ctx context.Context, pid uuid.UUID) (*ProfilePersonalInfo, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	if _, err := s.profiles.GetByID(ctx, pid); err != nil {
 		return nil, err
 	}
 	return s.profiles.GetPersonalInfo(ctx, pid)
 }
 func (s *Service) PutPersonalInfo(ctx context.Context, pid uuid.UUID, req PersonalInfoRequest) (*ProfilePersonalInfo, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	if _, err := s.profiles.GetByID(ctx, pid); err != nil {
 		return nil, err
 	}
@@ -220,9 +226,13 @@ func (s *Service) PutPersonalInfo(ctx context.Context, pid uuid.UUID, req Person
 	if err := s.profiles.UpsertPersonalInfo(ctx, v); err != nil {
 		return nil, err
 	}
+	s.recordAgentProfileWrite(ctx, pid, "agent.profile.personal_info.updated")
 	return s.profiles.GetPersonalInfo(ctx, pid)
 }
 func (s *Service) PatchPersonalInfo(ctx context.Context, pid uuid.UUID, req PersonalInfoRequest) (*ProfilePersonalInfo, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	v, err := s.GetPersonalInfo(ctx, pid)
 	if err != nil {
 		return nil, err
@@ -234,6 +244,7 @@ func (s *Service) PatchPersonalInfo(ctx context.Context, pid uuid.UUID, req Pers
 	if err = s.profiles.UpsertPersonalInfo(ctx, v); err != nil {
 		return nil, err
 	}
+	s.recordAgentProfileWrite(ctx, pid, "agent.profile.personal_info.updated")
 	return s.profiles.GetPersonalInfo(ctx, pid)
 }
 func applyPersonal(v *ProfilePersonalInfo, r PersonalInfoRequest) {
@@ -276,6 +287,9 @@ func applyPersonal(v *ProfilePersonalInfo, r PersonalInfoRequest) {
 }
 
 func (s *Service) ListSection(ctx context.Context, k SectionKind, pid uuid.UUID) (any, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	if _, err := s.profiles.GetByID(ctx, pid); err != nil {
 		return nil, err
 	}
@@ -306,6 +320,9 @@ func (s *Service) ListSection(ctx context.Context, k SectionKind, pid uuid.UUID)
 	return nil, fmt.Errorf("unknown section %q", k)
 }
 func (s *Service) GetSection(ctx context.Context, k SectionKind, pid, id uuid.UUID) (any, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	if _, err := s.profiles.GetByID(ctx, pid); err != nil {
 		return nil, err
 	}
@@ -336,6 +353,9 @@ func (s *Service) GetSection(ctx context.Context, k SectionKind, pid, id uuid.UU
 	return nil, fmt.Errorf("unknown section %q", k)
 }
 func (s *Service) CreateSection(ctx context.Context, k SectionKind, pid uuid.UUID, r SectionRequest) (any, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	if _, err := s.profiles.GetByID(ctx, pid); err != nil {
 		return nil, err
 	}
@@ -346,9 +366,13 @@ func (s *Service) CreateSection(ctx context.Context, k SectionKind, pid uuid.UUI
 	if err := s.persistCreate(ctx, k, v); err != nil {
 		return nil, err
 	}
+	s.recordAgentProfileWrite(ctx, pid, "agent.profile.section.created")
 	return v, nil
 }
 func (s *Service) UpdateSection(ctx context.Context, k SectionKind, pid, id uuid.UUID, r SectionRequest) (any, error) {
+	if err := s.authorizeAgentProfileAccess(ctx, pid); err != nil {
+		return nil, err
+	}
 	v, err := s.GetSection(ctx, k, pid, id)
 	if err != nil {
 		return nil, err
@@ -360,6 +384,7 @@ func (s *Service) UpdateSection(ctx context.Context, k SectionKind, pid, id uuid
 	if err = s.persistUpdate(ctx, k, v); err != nil {
 		return nil, err
 	}
+	s.recordAgentProfileWrite(ctx, pid, "agent.profile.section.updated")
 	return v, nil
 }
 func (s *Service) DeleteSection(ctx context.Context, k SectionKind, pid, id uuid.UUID) error {

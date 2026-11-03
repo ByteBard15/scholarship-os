@@ -18,7 +18,7 @@ The agent normally needs these scopes:
 
 - `research`: poll tasks, claim work, save sources and findings, and create proposals.
 - `applications`: poll approved proposals, create Applications, and run application prefill.
-- `profiles`: read the Effective Profile associated with research or an Application.
+- `profiles`: read Effective Profiles and maintain owned Master and derived profiles through the [profile tailoring API](profile-tailoring.md). Master maintenance is explicitly authorized by the workspace owner.
 - `information_requests`: create, read, and process controlled requests for missing information.
 - `writing`: list writing tags, retrieve matching source samples, and save generated drafts.
 

@@ -14,6 +14,7 @@ import (
 	"github.com/byte/scholarship-os/apps/api/internal/features/workflow"
 	"github.com/byte/scholarship-os/apps/api/internal/features/writing"
 	appmw "github.com/byte/scholarship-os/apps/api/internal/middleware"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	"github.com/byte/scholarship-os/apps/api/pkg/response"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -53,6 +54,7 @@ func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, a
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(appmw.Authenticate(authenticator))
+			profile.MountAgentRoutes(r, profiles, owners, appmw.RequireAgentScope(principal.ScopeProfiles))
 			workflow.MountAgentRoutes(r, workflows, applications, owners)
 			writing.MountAgentRoutes(r, writings)
 		})

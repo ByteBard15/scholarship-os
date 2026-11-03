@@ -70,14 +70,14 @@ Three request principals exist: `USER`, `AGENT`, and `SYSTEM`.
 - SYSTEM authentication may access every endpoint and bypasses workspace ownership checks.
 - Only SYSTEM may register users or issue and revoke agent credentials.
 - Agents may research, propose, prefill, and process controlled Information Requests, but may not approve Application Proposals.
-- Agents may not change passwords, manage users, or modify canonical Master Profile facts through agent routes.
+- Agents may not change passwords or manage users. Workspace agents with the `profiles` scope may maintain canonical Master Profile facts through dedicated profile routes, as explicitly authorized by the workspace owner. Preserve ownership checks and use supported applicant evidence.
 - Authentication and ownership checks are centralized in middleware and reinforced at domain service entry points.
 - Never expose passwords, password hashes, session tokens, agent keys, the system key, or Authorization headers in logs.
 - `SYSTEM_API_KEY` is root-equivalent and must never be compiled into the frontend or given to agents.
 
 ## AI Safety Rules
 
-AI agents must never receive unrestricted SQL access. Agents operate through typed domain tools and must never silently overwrite canonical applicant facts. AI-generated modifications are proposals, reviewed research findings, or derived-profile overrides. New extracted facts are candidates until approved. Imported CV data must go through review. Tools consume `EffectiveProfile`, never raw GORM models or hand-built inheritance logic. Agents must not assess admission probability or submit applications.
+AI agents must never receive unrestricted SQL access. Agents operate through typed domain tools and must never silently overwrite canonical applicant facts. AI-generated modifications are proposals, reviewed research findings, derived-profile overrides, or owner-authorized profile maintenance through scoped profile routes. New extracted facts are candidates until approved. Imported CV data must go through review. Tools consume `EffectiveProfile`, never raw GORM models or hand-built inheritance logic. Agents must not assess admission probability or submit applications.
 
 ## Credentials
 
