@@ -299,6 +299,12 @@ func (h *Handler) AgentCreateInformationRequest(w http.ResponseWriter, r *http.R
 	response.Data(w, http.StatusCreated, informationRequestResponse(value, nil))
 }
 func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
+	h.listResearchTasks(w, r, false)
+}
+func (h *Handler) AgentListResearchTasks(w http.ResponseWriter, r *http.Request) {
+	h.listResearchTasks(w, r, true)
+}
+func (h *Handler) listResearchTasks(w http.ResponseWriter, r *http.Request, agent bool) {
 	filters, ok := h.researchTaskFilters(w, r)
 	if !ok {
 		return
@@ -318,7 +324,11 @@ func (h *Handler) ListResearchTasks(w http.ResponseWriter, r *http.Request) {
 			*param.target = value
 		}
 	}
-	items, total, err := h.service.ListResearchTaskPage(r.Context(), filters, page, pageSize)
+	list := h.service.ListResearchTaskPage
+	if agent {
+		list = h.service.AgentListResearchTaskPage
+	}
+	items, total, err := list(r.Context(), filters, page, pageSize)
 	if err != nil {
 		h.writeError(w, r, err)
 		return
@@ -1138,6 +1148,10 @@ func (h *Handler) PreparationSummary(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, message := 500, "INTERNAL_ERROR", "internal server error"
 	switch {
+	case errors.Is(err, principal.ErrAuthRequired):
+		status, code, message = 401, "AUTH_REQUIRED", err.Error()
+	case errors.Is(err, principal.ErrAgentRequired), errors.Is(err, principal.ErrAgentScopeRequired), errors.Is(err, principal.ErrForbidden):
+		status, code, message = 403, "AGENT_RESEARCH_FORBIDDEN", err.Error()
 	case errors.Is(err, ErrResearchTaskNotFound):
 		status, code, message = 404, "RESEARCH_TASK_NOT_FOUND", err.Error()
 	case errors.Is(err, ErrResearchTaskLinkNotFound):

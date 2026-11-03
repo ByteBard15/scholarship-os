@@ -1198,3 +1198,23 @@ func (r *GORMRepository) ListTaskProposals(ctx context.Context, taskID uuid.UUID
 	err = r.db.WithContext(ctx).Where("research_task_id = ?", taskID).Order("created_at ASC").Order("id ASC").Find(&items).Error
 	return
 }
+
+// QueueResearchTask changes only eligible states, so a concurrent worker claim
+// cannot be overwritten by a stale agent queue request.
+func (r *GORMRepository) QueueResearchTask(ctx context.Context, id, ownerID uuid.UUID) (*ResearchTask, error) {
+	result := r.db.WithContext(ctx).Model(&ResearchTask{}).Where("id = ? AND user_id = ? AND status IN ? AND profile_id IS NOT NULL", id, ownerID, []string{"draft", "ready"}).Update("status", "queued")
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	task, err := r.GetResearchTask(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if task.UserID != ownerID {
+		return nil, ErrResearchTaskNotFound
+	}
+	if result.RowsAffected == 0 && task.Status != "queued" {
+		return nil, ErrInvalidResearchTaskState
+	}
+	return task, nil
+}

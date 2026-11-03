@@ -45,6 +45,7 @@ type Repository interface {
 	CountResearchTasks(context.Context, ResearchTaskFilters) (int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*ResearchTask, error)
 	UpdateResearchTask(context.Context, *ResearchTask) error
+	QueueResearchTask(context.Context, uuid.UUID, uuid.UUID) (*ResearchTask, error)
 	DeleteResearchTask(context.Context, *ResearchTask) error
 	ResetResearchTaskResearch(context.Context, *ResearchTask) error
 	ListTaskLinks(context.Context, uuid.UUID) ([]ResearchTaskLink, error)

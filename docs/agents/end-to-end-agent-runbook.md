@@ -26,6 +26,8 @@ Agents cannot approve or reject Application Proposals. That action belongs to a 
 
 ## 2. Research execution lifecycle
 
+Imported tasks left in draft can be listed and queued using the [agent task queue API](task-queue.md).
+
 ### Step 1: Poll queued work
 
 ```http

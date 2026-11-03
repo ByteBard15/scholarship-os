@@ -81,6 +81,8 @@ func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handle
 	informationScope := appmw.RequireAgentScope(principal.ScopeInformationRequests)
 
 	r.With(research).Get("/agent/research-tasks", h.PollResearchTasks)
+	r.With(research).Get("/agent/research-tasks/list", h.AgentListResearchTasks)
+	r.With(research, owners.ResearchTask("agent queue research task")).Post("/agent/research-tasks/{taskID}/queue", h.AgentQueueResearchTask)
 	r.With(research, owners.ResearchTask("agent get research task")).Get("/agent/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}", h.GetResearchTask)
 	r.With(research, owners.ResearchTask("agent list research task links")).Get("/agent/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/links", h.ListTaskLinks)
 	r.With(research, owners.ResearchTask("agent list research task contexts")).Get("/agent/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/contexts", h.ListTaskContexts)

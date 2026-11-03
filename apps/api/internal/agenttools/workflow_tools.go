@@ -12,6 +12,8 @@ import (
 // prefill agents. It intentionally exposes domain operations rather than a
 // generic entity update or database handle.
 type WorkflowAgentTools interface {
+	QueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
+	ListResearchTasks(context.Context, workflow.ResearchTaskFilters, int, int) ([]workflow.ResearchTask, int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	ListResearchTaskLinks(context.Context, uuid.UUID) ([]workflow.ResearchTaskLink, error)
 	GetApplicationProposal(context.Context, uuid.UUID) (*workflow.ApplicationProposalResponse, error)
@@ -27,6 +29,8 @@ type WorkflowAgentTools interface {
 }
 
 type workflowService interface {
+	AgentQueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
+	AgentListResearchTaskPage(context.Context, workflow.ResearchTaskFilters, int, int) ([]workflow.ResearchTask, int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	ListTaskLinks(context.Context, uuid.UUID) ([]workflow.ResearchTaskLink, error)
 	GetProposal(context.Context, uuid.UUID) (*workflow.ApplicationProposalResponse, error)
@@ -82,4 +86,11 @@ func (t *ControlledWorkflowTools) CompleteInformationRequest(ctx context.Context
 }
 func (t *ControlledWorkflowTools) CompleteResearchTask(ctx context.Context, id uuid.UUID) (*workflow.ResearchTask, error) {
 	return t.workflows.TransitionResearchTask(ctx, id, "complete")
+}
+
+func (t *ControlledWorkflowTools) QueueResearchTask(ctx context.Context, id uuid.UUID) (*workflow.ResearchTask, error) {
+	return t.workflows.AgentQueueResearchTask(ctx, id)
+}
+func (t *ControlledWorkflowTools) ListResearchTasks(ctx context.Context, filters workflow.ResearchTaskFilters, page, pageSize int) ([]workflow.ResearchTask, int64, error) {
+	return t.workflows.AgentListResearchTaskPage(ctx, filters, page, pageSize)
 }
