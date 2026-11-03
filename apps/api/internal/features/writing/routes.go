@@ -22,4 +22,7 @@ func MountAgentRoutes(r chi.Router, handler *Handler) {
 	r.With(writingScope).Get("/agent/writing-tags", handler.AgentListTags)
 	r.With(writingScope).Post("/agent/writing-samples/match", handler.AgentMatchSamples)
 	r.With(writingScope).Post("/agent/writing-samples", handler.AgentCreateGeneratedSample)
+	r.With(writingScope).Get("/agent/writing-samples", handler.AgentListSampleMetadata)
+	r.With(writingScope).Get("/agent/writing-samples/{sampleID}", handler.GetSample)
+	r.With(writingScope).Patch("/agent/writing-samples/{sampleID}", handler.UpdateSample)
 }

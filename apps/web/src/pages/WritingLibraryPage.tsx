@@ -18,6 +18,7 @@ const documentTypes: Array<{ value: WritingDocumentType; label: string }> = [
   { value: "recommendation_letter", label: "Recommendation letter" },
   { value: "essay", label: "Essay" },
   { value: "cover_letter", label: "Cover letter" },
+  { value: "email", label: "Email" },
   { value: "other", label: "Other" },
 ];
 

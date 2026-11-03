@@ -14,6 +14,7 @@ const (
 	TypeStatementOfPurpose   = "statement_of_purpose"
 	TypeEssay                = "essay"
 	TypeCoverLetter          = "cover_letter"
+	TypeEmail                = "email"
 	TypeOther                = "other"
 	OriginUser               = "user"
 	OriginAgent              = "agent"
@@ -26,20 +27,21 @@ const (
 )
 
 type WritingSample struct {
-	ID            uuid.UUID  `gorm:"type:uuid;primaryKey"`
-	UserID        uuid.UUID  `gorm:"type:uuid;not null;index"`
-	ApplicationID *uuid.UUID `gorm:"type:uuid;index"`
-	Title         string     `gorm:"not null"`
-	DocumentType  string     `gorm:"not null;index"`
-	Content       string     `gorm:"type:text;not null"`
-	Origin        string     `gorm:"not null"`
-	Status        string     `gorm:"not null;index"`
-	Description   *string    `gorm:"type:text"`
-	CreatedBy     *string
-	Tags          []WritingTag `gorm:"many2many:writing_sample_tags"`
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DeletedAt     gorm.DeletedAt `gorm:"index"`
+	ID                      uuid.UUID  `gorm:"type:uuid;primaryKey"`
+	UserID                  uuid.UUID  `gorm:"type:uuid;not null;index"`
+	ApplicationID           *uuid.UUID `gorm:"type:uuid;index"`
+	Title                   string     `gorm:"not null"`
+	DocumentType            string     `gorm:"not null;index"`
+	Content                 string     `gorm:"type:text;not null"`
+	Origin                  string     `gorm:"not null"`
+	Status                  string     `gorm:"not null;index"`
+	Description             *string    `gorm:"type:text"`
+	CreatedBy               *string
+	SourceProfileSnapshotID *uuid.UUID   `gorm:"type:uuid;index"`
+	Tags                    []WritingTag `gorm:"many2many:writing_sample_tags"`
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	DeletedAt               gorm.DeletedAt `gorm:"index"`
 }
 
 func (WritingSample) TableName() string { return "writing_samples" }

@@ -10,6 +10,7 @@ import (
 	"github.com/byte/scholarship-os/apps/api/internal/features/user"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type GORMRepository struct{ db *gorm.DB }
@@ -216,4 +217,26 @@ func (r *GORMRepository) RevokeAgentCredential(ctx context.Context, value *Agent
 func isDuplicate(err error) bool {
 	text := strings.ToLower(err.Error())
 	return strings.Contains(text, "duplicate") || strings.Contains(text, "unique constraint")
+}
+
+func (r *GORMRepository) UpdateAgentScopes(ctx context.Context, id uuid.UUID, scopes []AgentCredentialScope, audit *profile.AuditLog) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var credential AgentCredential
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&credential, "id = ?", id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrCredentialNotFound
+			}
+			return err
+		}
+		if !credential.IsActive || credential.RevokedAt != nil {
+			return ErrAgentKeyRevoked
+		}
+		if err := tx.Where("agent_credential_id = ?", id).Delete(&AgentCredentialScope{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&scopes).Error; err != nil {
+			return err
+		}
+		return tx.Create(audit).Error
+	})
 }

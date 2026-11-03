@@ -8,6 +8,7 @@ import (
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/catalog"
 	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
+	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
 	"github.com/byte/scholarship-os/apps/api/pkg/response"
 	"github.com/go-chi/chi/v5"
@@ -886,6 +887,8 @@ func (h *Handler) MarkResearchStale(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) err(w http.ResponseWriter, r *http.Request, e error) {
 	status, code, message := 500, "INTERNAL_ERROR", "internal server error"
 	switch {
+	case errors.Is(e, principal.ErrAgentScopeRequired), errors.Is(e, principal.ErrForbidden):
+		status, code, message = 403, "AGENT_APPLICATION_FORBIDDEN", e.Error()
 	case errors.Is(e, ErrApplicationNotFound):
 		status, code, message = 404, "APPLICATION_NOT_FOUND", e.Error()
 	case errors.Is(e, ErrInvalidApplicationStatus):

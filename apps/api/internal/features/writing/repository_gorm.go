@@ -3,6 +3,7 @@ package writing
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -169,4 +170,32 @@ func replaceSampleTags(tx *gorm.DB, sampleID uuid.UUID, tags []WritingTag) error
 		links = append(links, WritingSampleTag{WritingSampleID: sampleID, WritingTagID: tag.ID, CreatedAt: now})
 	}
 	return tx.Create(&links).Error
+}
+
+func (r *GORMRepository) ListSampleMetadata(ctx context.Context, owner uuid.UUID, q SampleMetadataQuery) ([]SampleMetadataResponse, error) {
+	query := r.db.WithContext(ctx).Model(&WritingSample{}).Select("id, application_id, title, document_type, status, origin, updated_at").Where("user_id = ?", owner)
+	if q.Title != "" {
+		query = query.Where("LOWER(BTRIM(title)) = ?", strings.ToLower(strings.TrimSpace(q.Title)))
+	}
+	if q.DocumentType != "" {
+		query = query.Where("document_type = ?", q.DocumentType)
+	}
+	out := make([]SampleMetadataResponse, 0)
+	err := query.Order("updated_at DESC, id ASC").Limit(q.Limit).Offset(q.Offset).Find(&out).Error
+	return out, err
+}
+func (r *GORMRepository) UpdateSuggestedSample(ctx context.Context, sample *WritingSample, tags *[]WritingTag) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var stored WritingSample
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND user_id = ?", sample.ID, sample.UserID).First(&stored).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrSampleNotFound
+			}
+			return err
+		}
+		if stored.Status != StatusSuggested || stored.Origin != OriginAgent {
+			return ErrDraftReadOnly
+		}
+		return (&GORMRepository{db: tx}).UpdateSample(ctx, sample, tags)
+	})
 }

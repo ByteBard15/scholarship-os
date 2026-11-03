@@ -5,6 +5,7 @@ export type WritingDocumentType =
   | "statement_of_purpose"
   | "essay"
   | "cover_letter"
+  | "email"
   | "other";
 
 export interface WritingTag {
@@ -26,6 +27,7 @@ export interface WritingSample {
   createdBy?: string;
   tags: WritingTag[];
   sourceSampleIds?: string[];
+  sourceProfileSnapshotId?: string;
   createdAt: string;
   updatedAt: string;
 }

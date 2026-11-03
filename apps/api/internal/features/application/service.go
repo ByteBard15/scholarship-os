@@ -649,6 +649,14 @@ func (s *Service) DeleteURL(c context.Context, a, id uuid.UUID) error {
 }
 
 func (s *Service) ListTasks(c context.Context, a uuid.UUID) ([]ApplicationTask, error) {
+	if actor, ok := principal.PrincipalFromContext(c); ok && actor.Type == principal.PrincipalAgent {
+		if !actor.HasScope(principal.ScopeTasks) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+		if _, err := s.Get(c, a); err != nil {
+			return nil, err
+		}
+	}
 	return s.repo.ListTasks(c, a)
 }
 func (s *Service) validateTaskParent(c context.Context, a, current uuid.UUID, parent *uuid.UUID) error {
@@ -674,6 +682,14 @@ func (s *Service) validateTaskParent(c context.Context, a, current uuid.UUID, pa
 	return nil
 }
 func (s *Service) CreateTask(c context.Context, a uuid.UUID, q TaskRequest) (*ApplicationTask, error) {
+	if actor, ok := principal.PrincipalFromContext(c); ok && actor.Type == principal.PrincipalAgent {
+		if !actor.HasScope(principal.ScopeTasks) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+		if _, err := s.Get(c, a); err != nil {
+			return nil, err
+		}
+	}
 	if _, e := s.repo.Get(c, a); e != nil {
 		return nil, e
 	}
@@ -694,6 +710,14 @@ func (s *Service) CreateTask(c context.Context, a uuid.UUID, q TaskRequest) (*Ap
 	return v, s.repo.CreateTask(c, v)
 }
 func (s *Service) UpdateTask(c context.Context, a, id uuid.UUID, q TaskRequest) (*ApplicationTask, error) {
+	if actor, ok := principal.PrincipalFromContext(c); ok && actor.Type == principal.PrincipalAgent {
+		if !actor.HasScope(principal.ScopeTasks) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+		if _, err := s.Get(c, a); err != nil {
+			return nil, err
+		}
+	}
 	v, e := s.repo.GetTask(c, a, id)
 	if e != nil {
 		return nil, e

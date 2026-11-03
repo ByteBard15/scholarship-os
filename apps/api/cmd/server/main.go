@@ -74,7 +74,7 @@ func main() {
 	applicationService := application.NewService(applicationRepo, profileService, catalogService)
 	researchService := application.NewResearchService(applicationRepo, applicationService, log)
 	workflowService := workflow.NewService(workflowRepo, userRepo, applicationService, profileService, workflow.NewMockApplicationPrefiller())
-	writingService := writing.NewService(writingRepo)
+	writingService := writing.NewService(writingRepo, profileService)
 	applicationService.SetPreparationReader(workflowService)
 	handler := server.NewRouter(log, sqlDB, db, cfg.WebOrigin, authService,
 		featureauth.NewHandler(authService, validate),

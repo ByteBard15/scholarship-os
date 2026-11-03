@@ -39,6 +39,11 @@ func NewService(repo Repository, users user.Repository, applications Application
 }
 
 func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearchTaskRequest, queue bool) (*ResearchTask, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireResearchAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	if principal.EnforceOwner(ctx, request.UserID) != nil {
 		return nil, ErrResearchTaskNotFound
 	}
@@ -77,6 +82,11 @@ func (s *Service) CreateResearchTask(ctx context.Context, request CreateResearch
 }
 
 func (s *Service) ImportResearchTasks(ctx context.Context, request ImportResearchTasksRequest) ([]ResearchTask, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireResearchAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	userID := request.UserID
 	if userID == uuid.Nil {
 		actor, ok := principal.PrincipalFromContext(ctx)
@@ -988,12 +998,18 @@ func (s *Service) DeleteField(ctx context.Context, appID, id uuid.UUID) error {
 }
 
 func (s *Service) ListQuestionnaires(ctx context.Context, appID uuid.UUID) ([]ApplicationQuestionnaire, error) {
+	if err := s.authorizeAgentQuestionnaireApp(ctx, appID); err != nil {
+		return nil, err
+	}
 	if _, err := s.applications.Get(ctx, appID); err != nil {
 		return nil, err
 	}
 	return s.repo.ListQuestionnaires(ctx, appID)
 }
 func (s *Service) GetQuestionnaire(ctx context.Context, appID, id uuid.UUID) (*QuestionnaireResponse, error) {
+	if err := s.authorizeAgentQuestionnaireApp(ctx, appID); err != nil {
+		return nil, err
+	}
 	item, err := s.repo.GetQuestionnaire(ctx, appID, id)
 	if err != nil {
 		return nil, err
@@ -1006,11 +1022,14 @@ func (s *Service) GetQuestionnaire(ctx context.Context, appID, id uuid.UUID) (*Q
 	return &response, nil
 }
 func (s *Service) CreateQuestionnaire(ctx context.Context, appID uuid.UUID, request QuestionnaireRequest) (*ApplicationQuestionnaire, error) {
+	if err := s.authorizeAgentQuestionnaireApp(ctx, appID); err != nil {
+		return nil, err
+	}
 	if _, err := s.applications.Get(ctx, appID); err != nil {
 		return nil, err
 	}
 	status := "not_started"
-	if request.Status != nil {
+	if actor, ok := principal.PrincipalFromContext(ctx); (!ok || actor.Type != principal.PrincipalAgent) && request.Status != nil {
 		status = *request.Status
 	}
 	item := &ApplicationQuestionnaire{ApplicationID: appID, Title: request.Title, Description: request.Description, QuestionnaireType: request.QuestionnaireType, Status: status, SourceURL: request.SourceURL}
@@ -1036,11 +1055,29 @@ func (s *Service) DeleteQuestionnaire(ctx context.Context, appID, id uuid.UUID) 
 }
 
 func (s *Service) ListQuestions(ctx context.Context, questionnaireID uuid.UUID) ([]ApplicationQuestion, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		questionnaire, err := s.repo.GetQuestionnaireByID(ctx, questionnaireID)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.authorizeAgentQuestionnaireApp(ctx, questionnaire.ApplicationID); err != nil {
+			return nil, err
+		}
+	}
 	return s.repo.ListQuestions(ctx, questionnaireID)
 }
 func (s *Service) CreateQuestion(ctx context.Context, questionnaireID uuid.UUID, request QuestionRequest) (*ApplicationQuestion, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		questionnaire, err := s.repo.GetQuestionnaireByID(ctx, questionnaireID)
+		if err != nil {
+			return nil, err
+		}
+		if err := s.authorizeAgentQuestionnaireApp(ctx, questionnaire.ApplicationID); err != nil {
+			return nil, err
+		}
+	}
 	status := "unanswered"
-	if request.Status != nil {
+	if actor, ok := principal.PrincipalFromContext(ctx); (!ok || actor.Type != principal.PrincipalAgent) && request.Status != nil {
 		status = *request.Status
 	}
 	item := &ApplicationQuestion{QuestionnaireID: questionnaireID, Key: request.Key, Prompt: request.Prompt, HelpText: request.HelpText, QuestionType: request.QuestionType, IsRequired: request.IsRequired, WordLimit: request.WordLimit, CharacterLimit: request.CharacterLimit, SortOrder: request.SortOrder, Options: profile.JSON(request.Options), Status: status}
@@ -1158,6 +1195,15 @@ func (s *Service) RegenerateQuestion(ctx context.Context, questionID uuid.UUID) 
 }
 
 func (s *Service) ListInformationRequests(ctx context.Context, filters InformationRequestFilters) ([]InformationRequest, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if !actor.HasScope(principal.ScopeInformationRequests) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+		if actor.UserID == nil {
+			return nil, principal.ErrForbidden
+		}
+	}
+
 	if actor, ok := principal.PrincipalFromContext(ctx); ok && !actor.IsSystem() {
 		filters.UserID = actor.UserID
 	}
@@ -1422,4 +1468,19 @@ func (s *Service) ResearchTaskResponses(ctx context.Context, tasks []ResearchTas
 		})
 	}
 	return responses, nil
+}
+
+func (s *Service) authorizeAgentQuestionnaireApp(ctx context.Context, id uuid.UUID) error {
+	actor, ok := principal.PrincipalFromContext(ctx)
+	if !ok || actor.Type != principal.PrincipalAgent {
+		return nil
+	}
+	if !actor.HasScope(principal.ScopeQuestionnaires) {
+		return principal.ErrAgentScopeRequired
+	}
+	app, err := s.applications.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return principal.EnforceOwner(ctx, app.UserID)
 }

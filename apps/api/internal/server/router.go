@@ -54,6 +54,7 @@ func NewRouter(log *slog.Logger, sqlDB *sql.DB, db *gorm.DB, webOrigin string, a
 		})
 		r.Group(func(r chi.Router) {
 			r.Use(appmw.Authenticate(authenticator))
+			featureauth.MountAgentRoutes(r, authHandler)
 			profile.MountAgentRoutes(r, profiles, owners, appmw.RequireAgentScope(principal.ScopeProfiles))
 			workflow.MountAgentRoutes(r, workflows, applications, owners)
 			writing.MountAgentRoutes(r, writings)

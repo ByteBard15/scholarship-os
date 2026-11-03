@@ -23,4 +23,9 @@ func MountSystemRoutes(r chi.Router, handler *Handler) {
 	r.Get("/admin/agent-credentials", handler.ListAgentCredentials)
 	r.Post("/admin/agent-credentials", handler.CreateAgentCredential)
 	r.Post("/admin/agent-credentials/{credentialID}/revoke", handler.RevokeAgentCredential)
+	r.Patch("/admin/agent-credentials/{credentialID}/scopes", handler.UpdateAgentScopes)
+}
+
+func MountAgentRoutes(r chi.Router, handler *Handler) {
+	r.Get("/agent/capabilities", handler.AgentCapabilities)
 }

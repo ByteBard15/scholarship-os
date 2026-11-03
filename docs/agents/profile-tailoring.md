@@ -30,7 +30,7 @@ Supported entity types: education, employment, projects, publications, articles,
 
 Before creating a Domain profile, list existing profiles to avoid duplicates. After any change, resolve its effective profile and verify that the intended text is visible and parent facts remain intact when tailoring a derived profile. Master edits intentionally affect inherited facts in descendant profiles unless overridden.
 
-For private writing, list `/agent/writing-tags` before calling `/agent/writing-samples/match`; retrieve no more than four relevant samples. Existing writing creation requires source sample IDs, preserves `derived_from`, and saves generated work as `suggested`. Profile-only local drafts are not a substitute for a source writing sample and must not be uploaded with invented provenance.
+For private writing, list `/agent/writing-tags` before calling `/agent/writing-samples/match`; retrieve no more than four relevant samples. Writing creation preserves source sample IDs in `derived_from` and saves generated work as `suggested`. After migration 17, profile-backed drafts may provide an owned `sourceProfileId` for immutable snapshot provenance; recommendation letters still require base writing samples. See [preparation access](application-preparation-access.md).
 
 ## Owner-authorized Master maintenance
 

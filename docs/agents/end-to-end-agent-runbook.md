@@ -4,6 +4,8 @@ This runbook describes how an authenticated Scholarship OS agent processes resea
 
 It is an operational sequence, not permission to bypass service boundaries. Agents use only the typed `/api/v1/agent` endpoints and never access PostgreSQL, GORM models, user credentials, or the SYSTEM key.
 
+For deployment, granting access and the complete route map, see [application preparation access](application-preparation-access.md).
+
 ## 1. Authentication and scope requirements
 
 Authenticate every agent request using the assigned credential:

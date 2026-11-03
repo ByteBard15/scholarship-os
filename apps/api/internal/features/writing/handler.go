@@ -182,7 +182,13 @@ func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) 
 		response.Error(w, http.StatusNotFound, "WRITING_SAMPLE_NOT_FOUND", err.Error())
 	case errors.Is(err, ErrTagNotFound):
 		response.Error(w, http.StatusNotFound, "WRITING_TAG_NOT_FOUND", err.Error())
-	case errors.Is(err, ErrUserRequired), errors.Is(err, ErrInvalidApplication), errors.Is(err, ErrInvalidSource), errors.Is(err, ErrTagsRequired):
+	case errors.Is(err, principal.ErrAuthRequired):
+		response.Error(w, http.StatusUnauthorized, "AUTH_REQUIRED", err.Error())
+	case errors.Is(err, principal.ErrAgentRequired), errors.Is(err, principal.ErrAgentScopeRequired):
+		response.Error(w, http.StatusForbidden, "AGENT_WRITING_FORBIDDEN", err.Error())
+	case errors.Is(err, ErrDraftReadOnly):
+		response.Error(w, http.StatusConflict, "WRITING_DRAFT_READ_ONLY", err.Error())
+	case errors.Is(err, ErrInvalidContent), errors.Is(err, ErrInvalidQuery), errors.Is(err, ErrInvalidProfile), errors.Is(err, ErrSourceRequired), errors.Is(err, ErrUserRequired), errors.Is(err, ErrInvalidApplication), errors.Is(err, ErrInvalidSource), errors.Is(err, ErrTagsRequired):
 		response.Error(w, http.StatusBadRequest, "INVALID_WRITING_REQUEST", err.Error())
 	case errors.Is(err, principal.ErrForbidden):
 		response.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")

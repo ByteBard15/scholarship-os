@@ -27,4 +27,5 @@ type Repository interface {
 	ListAgentCredentials(context.Context) ([]AgentCredential, error)
 	TouchAgentCredential(context.Context, uuid.UUID) error
 	RevokeAgentCredential(context.Context, *AgentCredential, *profile.AuditLog) error
+	UpdateAgentScopes(context.Context, uuid.UUID, []AgentCredentialScope, *profile.AuditLog) error
 }

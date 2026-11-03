@@ -2,6 +2,7 @@ package agenttools
 
 import (
 	"context"
+	"github.com/google/uuid"
 
 	"github.com/byte/scholarship-os/apps/api/internal/features/writing"
 )
@@ -10,6 +11,9 @@ import (
 // discover available tags before loading matching source content and may only
 // save generated work as a reviewable suggested sample.
 type WritingAgentTools interface {
+	ListWritingMetadata(context.Context, writing.SampleMetadataQuery) ([]writing.SampleMetadataResponse, error)
+	GetWritingSample(context.Context, uuid.UUID) (*writing.SampleResponse, error)
+	ReviseSuggestedWriting(context.Context, uuid.UUID, writing.UpdateSampleRequest) (*writing.SampleResponse, error)
 	ListWritingTags(context.Context) ([]writing.TagResponse, error)
 	MatchWritingSamples(context.Context, writing.MatchSamplesRequest) ([]writing.SampleMatchResponse, error)
 	SaveGeneratedWriting(context.Context, writing.CreateSampleRequest) (*writing.SampleResponse, error)
@@ -33,4 +37,14 @@ func (t *ControlledWritingTools) MatchWritingSamples(ctx context.Context, reques
 
 func (t *ControlledWritingTools) SaveGeneratedWriting(ctx context.Context, request writing.CreateSampleRequest) (*writing.SampleResponse, error) {
 	return t.writings.CreateSample(ctx, request, true)
+}
+
+func (t *ControlledWritingTools) ListWritingMetadata(ctx context.Context, q writing.SampleMetadataQuery) ([]writing.SampleMetadataResponse, error) {
+	return t.writings.AgentListSampleMetadata(ctx, q)
+}
+func (t *ControlledWritingTools) GetWritingSample(ctx context.Context, id uuid.UUID) (*writing.SampleResponse, error) {
+	return t.writings.GetSample(ctx, id)
+}
+func (t *ControlledWritingTools) ReviseSuggestedWriting(ctx context.Context, id uuid.UUID, req writing.UpdateSampleRequest) (*writing.SampleResponse, error) {
+	return t.writings.UpdateSample(ctx, id, req)
 }

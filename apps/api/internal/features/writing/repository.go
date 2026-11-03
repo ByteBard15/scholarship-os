@@ -17,6 +17,8 @@ type Repository interface {
 	GetSample(context.Context, uuid.UUID) (*WritingSample, error)
 	ListSamples(context.Context, uuid.UUID, SampleFilters) ([]WritingSample, error)
 	UpdateSample(context.Context, *WritingSample, *[]WritingTag) error
+	UpdateSuggestedSample(context.Context, *WritingSample, *[]WritingTag) error
+	ListSampleMetadata(context.Context, uuid.UUID, SampleMetadataQuery) ([]SampleMetadataResponse, error)
 	DeleteSample(context.Context, *WritingSample) error
 	ListSourceIDs(context.Context, uuid.UUID) ([]uuid.UUID, error)
 	CreateTag(context.Context, *WritingTag) error

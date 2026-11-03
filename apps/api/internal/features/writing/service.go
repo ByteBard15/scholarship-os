@@ -5,15 +5,38 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/byte/scholarship-os/apps/api/internal/features/profile"
 	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	"github.com/google/uuid"
 )
 
-type Service struct{ repo Repository }
+type ProfileSources interface {
+	Get(context.Context, uuid.UUID) (*profile.ApplicantProfile, error)
+	CreateSnapshot(context.Context, uuid.UUID, profile.CreateSnapshotRequest) (*profile.ProfileSnapshot, error)
+}
+type Service struct {
+	repo     Repository
+	profiles ProfileSources
+}
 
-func NewService(repo Repository) *Service { return &Service{repo: repo} }
+func NewService(repo Repository, profiles ...ProfileSources) *Service {
+	s := &Service{repo: repo}
+	if len(profiles) > 0 {
+		s.profiles = profiles[0]
+	}
+	return s
+}
 
 func (s *Service) CreateSample(ctx context.Context, request CreateSampleRequest, agentGenerated bool) (*SampleResponse, error) {
+	if strings.TrimSpace(request.Title) == "" || strings.TrimSpace(request.Content) == "" {
+		return nil, ErrInvalidContent
+	}
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireWritingAgent(ctx); err != nil {
+			return nil, err
+		}
+		agentGenerated = true
+	}
 	userID, err := requestUserID(ctx, request.UserID)
 	if err != nil {
 		return nil, err
@@ -28,8 +51,8 @@ func (s *Service) CreateSample(ctx context.Context, request CreateSampleRequest,
 		}
 	}
 	sources := uniqueIDs(request.SourceSampleIDs)
-	if agentGenerated && len(sources) == 0 {
-		return nil, ErrInvalidSource
+	if agentGenerated && len(sources) == 0 && (request.SourceProfileID == nil || request.DocumentType == TypeRecommendationLetter) {
+		return nil, ErrSourceRequired
 	}
 	valid, err := s.repo.SamplesBelongToUser(ctx, userID, sources)
 	if err != nil {
@@ -37,6 +60,25 @@ func (s *Service) CreateSample(ctx context.Context, request CreateSampleRequest,
 	}
 	if !valid {
 		return nil, ErrInvalidSource
+	}
+	var snapshotID *uuid.UUID
+	if request.SourceProfileID != nil {
+		if s.profiles == nil {
+			return nil, ErrInvalidProfile
+		}
+		if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent && !actor.HasScope(principal.ScopeProfiles) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+		p, err := s.profiles.Get(ctx, *request.SourceProfileID)
+		if err != nil || p.UserID != userID {
+			return nil, ErrInvalidProfile
+		}
+		by, reason := "writing", "Factual source for generated writing: "+strings.TrimSpace(request.Title)
+		snapshot, err := s.profiles.CreateSnapshot(ctx, p.ID, profile.CreateSnapshotRequest{CreatedBy: &by, Reason: &reason})
+		if err != nil {
+			return nil, err
+		}
+		snapshotID = &snapshot.ID
 	}
 	origin, status := request.Origin, request.Status
 	if origin == "" {
@@ -52,7 +94,7 @@ func (s *Service) CreateSample(ctx context.Context, request CreateSampleRequest,
 		createdBy = &value
 	}
 	sample := &WritingSample{
-		ID: uuid.New(), UserID: userID, ApplicationID: request.ApplicationID,
+		ID: uuid.New(), UserID: userID, ApplicationID: request.ApplicationID, SourceProfileSnapshotID: snapshotID,
 		Title: strings.TrimSpace(request.Title), DocumentType: request.DocumentType,
 		Content: strings.TrimSpace(request.Content), Origin: origin, Status: status,
 		Description: trimmedPointer(request.Description), CreatedBy: createdBy,
@@ -65,6 +107,11 @@ func (s *Service) CreateSample(ctx context.Context, request CreateSampleRequest,
 }
 
 func (s *Service) GetSample(ctx context.Context, id uuid.UUID) (*SampleResponse, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireWritingAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	sample, err := s.repo.GetSample(ctx, id)
 	if err != nil {
 		return nil, err
@@ -101,12 +148,27 @@ func (s *Service) ListSamples(ctx context.Context, requestedUserID *uuid.UUID, f
 }
 
 func (s *Service) UpdateSample(ctx context.Context, id uuid.UUID, request UpdateSampleRequest) (*SampleResponse, error) {
+	if (request.Title != nil && strings.TrimSpace(*request.Title) == "") || (request.Content != nil && strings.TrimSpace(*request.Content) == "") {
+		return nil, ErrInvalidContent
+	}
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireWritingAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	sample, err := s.repo.GetSample(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if err := principal.EnforceOwner(ctx, sample.UserID); err != nil {
 		return nil, ErrSampleNotFound
+	}
+	agent := false
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		agent = true
+		if sample.Origin != OriginAgent || sample.Status != StatusSuggested || (request.Status != nil && *request.Status != StatusSuggested) {
+			return nil, ErrDraftReadOnly
+		}
 	}
 	if request.Title != nil {
 		sample.Title = strings.TrimSpace(*request.Title)
@@ -128,7 +190,11 @@ func (s *Service) UpdateSample(ctx context.Context, id uuid.UUID, request Update
 		values := buildTags(sample.UserID, *request.TagNames)
 		tags = &values
 	}
-	if err := s.repo.UpdateSample(ctx, sample, tags); err != nil {
+	update := s.repo.UpdateSample
+	if agent {
+		update = s.repo.UpdateSuggestedSample
+	}
+	if err := update(ctx, sample, tags); err != nil {
 		return nil, err
 	}
 	sources, err := s.repo.ListSourceIDs(ctx, id)
@@ -173,6 +239,11 @@ func (s *Service) CreateTag(ctx context.Context, request CreateTagRequest) (*Tag
 }
 
 func (s *Service) ListTags(ctx context.Context, requestedUserID *uuid.UUID) ([]TagResponse, error) {
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireWritingAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	userID, err := requestUserID(ctx, requestedUserID)
 	if err != nil {
 		return nil, err
@@ -192,6 +263,14 @@ func (s *Service) DeleteTag(ctx context.Context, id uuid.UUID) error {
 }
 
 func (s *Service) MatchSamples(ctx context.Context, request MatchSamplesRequest) ([]SampleMatchResponse, error) {
+	if request.Limit < 0 || request.Limit > 4 {
+		return nil, ErrInvalidQuery
+	}
+	if actor, ok := principal.PrincipalFromContext(ctx); ok && actor.Type == principal.PrincipalAgent {
+		if err := requireWritingAgent(ctx); err != nil {
+			return nil, err
+		}
+	}
 	userID, err := requestUserID(ctx, request.UserID)
 	if err != nil {
 		return nil, err
@@ -328,5 +407,5 @@ func sampleResponse(sample *WritingSample, sources []uuid.UUID) SampleResponse {
 	for _, tag := range sample.Tags {
 		tags = append(tags, TagResponse{ID: tag.ID, Name: tag.Name})
 	}
-	return SampleResponse{ID: sample.ID, UserID: sample.UserID, ApplicationID: sample.ApplicationID, Title: sample.Title, DocumentType: sample.DocumentType, Content: sample.Content, Origin: sample.Origin, Status: sample.Status, Description: sample.Description, CreatedBy: sample.CreatedBy, Tags: tags, SourceSampleIDs: sources, CreatedAt: sample.CreatedAt.UTC(), UpdatedAt: sample.UpdatedAt.UTC()}
+	return SampleResponse{ID: sample.ID, UserID: sample.UserID, ApplicationID: sample.ApplicationID, Title: sample.Title, DocumentType: sample.DocumentType, Content: sample.Content, Origin: sample.Origin, Status: sample.Status, Description: sample.Description, CreatedBy: sample.CreatedBy, Tags: tags, SourceSampleIDs: sources, SourceProfileSnapshotID: sample.SourceProfileSnapshotID, CreatedAt: sample.CreatedAt.UTC(), UpdatedAt: sample.UpdatedAt.UTC()}
 }
