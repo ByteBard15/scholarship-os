@@ -130,6 +130,7 @@ export type ApplicationURL = {
   isOfficial: boolean;
 };
 export type ApplicationTask = {
+  completionCriteria?: string;
   id: string;
   applicationId: string;
   parentTaskId?: string;

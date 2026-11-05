@@ -41,6 +41,8 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.Application("list application URLs")).Get("/applications/{applicationID}/urls", h.ListURLs)
 	r.With(owners.Application("create application URL")).Post("/applications/{applicationID}/urls", h.CreateURL)
 	r.With(owners.Application("delete application URL")).Delete("/applications/{applicationID}/urls/{urlID}", h.DeleteURL)
+	r.With(owners.Application("list task evidence")).Get("/applications/{applicationID}/tasks/{taskID}/evidence", h.ListTaskEvidence)
+	r.With(owners.Application("record task evidence")).Post("/applications/{applicationID}/tasks/{taskID}/evidence", h.CreateTaskEvidence)
 	r.With(owners.Application("list application tasks")).Get("/applications/{applicationID}/tasks", h.ListTasks)
 	r.With(owners.Application("create application task")).Post("/applications/{applicationID}/tasks", h.CreateTask)
 	r.With(owners.Application("update application task")).Patch("/applications/{applicationID}/tasks/{taskID}", h.UpdateTask)

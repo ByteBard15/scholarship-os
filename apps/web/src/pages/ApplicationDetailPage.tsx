@@ -1,3 +1,4 @@
+import { TaskEvidencePanel } from "../components/TaskEvidencePanel";
 import { Dialog } from "../components/Dialog";
 import { TaskGuide } from "../components/TaskGuide";
 import { RequestButton } from "../components/RequestButton";
@@ -82,7 +83,9 @@ export function ApplicationDetailPage() {
       <Dialog open={!!selectedTask} title={selectedTask?.title ?? "Task details"} onClose={() => setSelectedTaskId(null)}>
         {selectedTask && <div className="p-5">
           <p className="text-sm text-slate-500">{selectedTask.status.replaceAll("_", " ")} · {selectedTask.taskType ?? "task"}{selectedTask.dueAt ? ` · Due ${new Date(selectedTask.dueAt).toLocaleString()}` : ""}</p>
+          {selectedTask.completionCriteria && <div className="mt-4"><h3 className="font-semibold">Completion criteria</h3><TaskGuide description={selectedTask.completionCriteria} /></div>}
           {selectedTask.description ? <TaskGuide description={selectedTask.description} /> : <p className="mt-4 text-sm text-slate-600">No additional instructions have been added to this task yet.</p>}
+          <TaskEvidencePanel key={selectedTask.id} applicationId={id} taskId={selectedTask.id} />
         </div>}
       </Dialog>
       <p className="text-sm uppercase text-indigo-700">

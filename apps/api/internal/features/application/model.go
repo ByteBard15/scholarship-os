@@ -185,17 +185,18 @@ type ApplicationURL struct {
 }
 type ApplicationTask struct {
 	Base
-	ApplicationID uuid.UUID  `gorm:"type:uuid;not null;index"`
-	ParentTaskID  *uuid.UUID `gorm:"type:uuid;index"`
-	Title         string     `gorm:"not null"`
-	Description   *string
-	Status        string `gorm:"not null;index"`
-	Priority      *int
-	DueAt         *time.Time
-	CompletedAt   *time.Time
-	SortOrder     *int
-	TaskType      *string
-	Source        *string
+	CompletionCriteria *string
+	ApplicationID      uuid.UUID  `gorm:"type:uuid;not null;index"`
+	ParentTaskID       *uuid.UUID `gorm:"type:uuid;index"`
+	Title              string     `gorm:"not null"`
+	Description        *string
+	Status             string `gorm:"not null;index"`
+	Priority           *int
+	DueAt              *time.Time
+	CompletedAt        *time.Time
+	SortOrder          *int
+	TaskType           *string
+	Source             *string
 	SoftDelete
 }
 type ExternalTaskReference struct {

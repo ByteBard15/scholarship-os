@@ -264,35 +264,37 @@ func toURL(v *ApplicationURL) URLResponse {
 }
 
 type TaskRequest struct {
-	ParentTaskID *uuid.UUID `json:"parentTaskId"`
-	Title        string     `json:"title" validate:"required"`
-	Description  *string    `json:"description"`
-	Status       *string    `json:"status" validate:"omitempty,oneof=todo in_progress blocked done cancelled"`
-	Priority     *int       `json:"priority" validate:"omitempty,gte=1,lte=5"`
-	DueAt        *time.Time `json:"dueAt"`
-	SortOrder    *int       `json:"sortOrder"`
-	TaskType     *string    `json:"taskType"`
-	Source       *string    `json:"source"`
+	CompletionCriteria *string    `json:"completionCriteria" validate:"omitempty,max=10000"`
+	ParentTaskID       *uuid.UUID `json:"parentTaskId"`
+	Title              string     `json:"title" validate:"required"`
+	Description        *string    `json:"description"`
+	Status             *string    `json:"status" validate:"omitempty,oneof=todo in_progress blocked done cancelled"`
+	Priority           *int       `json:"priority" validate:"omitempty,gte=1,lte=5"`
+	DueAt              *time.Time `json:"dueAt"`
+	SortOrder          *int       `json:"sortOrder"`
+	TaskType           *string    `json:"taskType"`
+	Source             *string    `json:"source"`
 }
 type TaskResponse struct {
-	ID            uuid.UUID  `json:"id"`
-	ApplicationID uuid.UUID  `json:"applicationId"`
-	ParentTaskID  *uuid.UUID `json:"parentTaskId,omitempty"`
-	Title         string     `json:"title"`
-	Description   *string    `json:"description,omitempty"`
-	Status        string     `json:"status"`
-	Priority      *int       `json:"priority,omitempty"`
-	DueAt         *time.Time `json:"dueAt,omitempty"`
-	CompletedAt   *time.Time `json:"completedAt,omitempty"`
-	SortOrder     *int       `json:"sortOrder,omitempty"`
-	TaskType      *string    `json:"taskType,omitempty"`
-	Source        *string    `json:"source,omitempty"`
-	CreatedAt     time.Time  `json:"createdAt"`
-	UpdatedAt     time.Time  `json:"updatedAt"`
+	CompletionCriteria *string    `json:"completionCriteria,omitempty"`
+	ID                 uuid.UUID  `json:"id"`
+	ApplicationID      uuid.UUID  `json:"applicationId"`
+	ParentTaskID       *uuid.UUID `json:"parentTaskId,omitempty"`
+	Title              string     `json:"title"`
+	Description        *string    `json:"description,omitempty"`
+	Status             string     `json:"status"`
+	Priority           *int       `json:"priority,omitempty"`
+	DueAt              *time.Time `json:"dueAt,omitempty"`
+	CompletedAt        *time.Time `json:"completedAt,omitempty"`
+	SortOrder          *int       `json:"sortOrder,omitempty"`
+	TaskType           *string    `json:"taskType,omitempty"`
+	Source             *string    `json:"source,omitempty"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
 }
 
 func toTask(v *ApplicationTask) TaskResponse {
-	return TaskResponse{v.ID, v.ApplicationID, v.ParentTaskID, v.Title, v.Description, v.Status, v.Priority, utcPtr(v.DueAt), utcPtr(v.CompletedAt), v.SortOrder, v.TaskType, v.Source, v.CreatedAt.UTC(), v.UpdatedAt.UTC()}
+	return TaskResponse{v.CompletionCriteria, v.ID, v.ApplicationID, v.ParentTaskID, v.Title, v.Description, v.Status, v.Priority, utcPtr(v.DueAt), utcPtr(v.CompletedAt), v.SortOrder, v.TaskType, v.Source, v.CreatedAt.UTC(), v.UpdatedAt.UTC()}
 }
 
 type EligibilitySummary struct {

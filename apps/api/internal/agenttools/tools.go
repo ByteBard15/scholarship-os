@@ -12,6 +12,8 @@ import (
 )
 
 type ScholarshipAgentTools interface {
+	ListTaskEvidence(context.Context, uuid.UUID, uuid.UUID) ([]application.TaskEvidenceResponse, error)
+	RecordTaskEvidence(context.Context, uuid.UUID, uuid.UUID, application.TaskEvidenceRequest) (*application.TaskEvidenceResponse, error)
 	GetApplication(context.Context, uuid.UUID) (*ApplicationView, error)
 	GetEffectiveProfile(context.Context, uuid.UUID) (*profile.EffectiveProfileResponse, error)
 	CreateResearchRun(context.Context, uuid.UUID, application.ResearchRunRequest) (*ResearchRunView, error)
@@ -68,6 +70,8 @@ type TaskView struct {
 }
 
 type applicationService interface {
+	ListTaskEvidence(context.Context, uuid.UUID, uuid.UUID) ([]application.TaskEvidence, error)
+	CreateTaskEvidence(context.Context, uuid.UUID, uuid.UUID, application.TaskEvidenceRequest) (*application.TaskEvidence, error)
 	Get(context.Context, uuid.UUID) (*application.Application, error)
 	CreateTask(context.Context, uuid.UUID, application.TaskRequest) (*application.ApplicationTask, error)
 	UpdateTask(context.Context, uuid.UUID, uuid.UUID, application.TaskRequest) (*application.ApplicationTask, error)
@@ -169,4 +173,27 @@ func findingView(v *application.ResearchFinding) *ResearchFindingView {
 }
 func taskView(v *application.ApplicationTask) *TaskView {
 	return &TaskView{v.ID, v.ApplicationID, v.ParentTaskID, v.Title, v.Status}
+}
+
+func taskEvidenceView(v application.TaskEvidence) application.TaskEvidenceResponse {
+	return application.TaskEvidenceResponse{ID: v.ID, TaskID: v.ApplicationTaskID, Kind: v.Kind, Label: v.Label, Value: v.Value, SourceURL: v.SourceURL, RecordedBy: v.RecordedBy, RecordedByType: v.RecordedByType, CreatedAt: v.CreatedAt.UTC()}
+}
+func (t *Tools) ListTaskEvidence(ctx context.Context, appID, taskID uuid.UUID) ([]application.TaskEvidenceResponse, error) {
+	items, err := t.applications.ListTaskEvidence(ctx, appID, taskID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]application.TaskEvidenceResponse, 0, len(items))
+	for _, v := range items {
+		result = append(result, taskEvidenceView(v))
+	}
+	return result, nil
+}
+func (t *Tools) RecordTaskEvidence(ctx context.Context, appID, taskID uuid.UUID, q application.TaskEvidenceRequest) (*application.TaskEvidenceResponse, error) {
+	v, err := t.applications.CreateTaskEvidence(ctx, appID, taskID, q)
+	if err != nil {
+		return nil, err
+	}
+	result := taskEvidenceView(*v)
+	return &result, nil
 }

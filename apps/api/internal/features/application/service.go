@@ -714,7 +714,7 @@ func (s *Service) CreateTask(c context.Context, a uuid.UUID, q TaskRequest) (*Ap
 	if q.Status != nil {
 		status = *q.Status
 	}
-	v := &ApplicationTask{ApplicationID: a, ParentTaskID: q.ParentTaskID, Title: q.Title, Description: q.Description, Status: status, Priority: q.Priority, DueAt: q.DueAt, SortOrder: q.SortOrder, TaskType: q.TaskType, Source: q.Source}
+	v := &ApplicationTask{CompletionCriteria: q.CompletionCriteria, ApplicationID: a, ParentTaskID: q.ParentTaskID, Title: q.Title, Description: q.Description, Status: status, Priority: q.Priority, DueAt: q.DueAt, SortOrder: q.SortOrder, TaskType: q.TaskType, Source: q.Source}
 	v.ID = id
 	if status == "done" {
 		n := s.now()
@@ -737,6 +737,9 @@ func (s *Service) UpdateTask(c context.Context, a, id uuid.UUID, q TaskRequest) 
 	}
 	if e = s.validateTaskParent(c, a, id, q.ParentTaskID); e != nil {
 		return nil, e
+	}
+	if q.CompletionCriteria != nil {
+		v.CompletionCriteria = q.CompletionCriteria
 	}
 	v.ParentTaskID = q.ParentTaskID
 	v.Title = q.Title

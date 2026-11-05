@@ -53,6 +53,8 @@ type Repository interface {
 	GetURL(context.Context, uuid.UUID, uuid.UUID) (*ApplicationURL, error)
 	CreateURL(context.Context, *ApplicationURL) error
 	DeleteURL(context.Context, *ApplicationURL) error
+	ListTaskEvidence(context.Context, uuid.UUID) ([]TaskEvidence, error)
+	CreateTaskEvidence(context.Context, *TaskEvidence, *profile.AuditLog) error
 	ListTasks(context.Context, uuid.UUID) ([]ApplicationTask, error)
 	GetTask(context.Context, uuid.UUID, uuid.UUID) (*ApplicationTask, error)
 	CreateTask(context.Context, *ApplicationTask) error

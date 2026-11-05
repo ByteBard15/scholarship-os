@@ -102,6 +102,8 @@ func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handle
 	r.With(applicationScope).Get("/agent/application-proposals/approved", h.AgentListApprovedProposals)
 	r.With(applicationScope, owners.ApplicationProposal("agent create application from approved proposal")).Post("/agent/application-proposals/{proposalID}/application", h.AgentCreateApplicationFromProposal)
 
+	r.With(tasksScope, owners.Application("agent list task evidence")).Get("/agent/applications/{applicationID}/tasks/{taskID}/evidence", applications.ListTaskEvidence)
+	r.With(tasksScope, owners.Application("agent record task evidence")).Post("/agent/applications/{applicationID}/tasks/{taskID}/evidence", applications.CreateTaskEvidence)
 	r.With(tasksScope, owners.Application("agent list application tasks")).Get("/agent/applications/{applicationID}/tasks", applications.ListTasks)
 	r.With(tasksScope, owners.Application("agent create application task")).Post("/agent/applications/{applicationID}/tasks", applications.CreateTask)
 	r.With(tasksScope, owners.Application("agent update application task")).Patch("/agent/applications/{applicationID}/tasks/{taskID}", applications.UpdateTask)

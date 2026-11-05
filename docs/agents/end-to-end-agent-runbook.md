@@ -416,3 +416,5 @@ Fail safely when:
 [ ] Rerun conservative prefill after new information
 [ ] Stop before submission or external communication
 ```
+
+For task completion criteria and attributed evidence, use [task completion evidence](task-completion-evidence.md). The [Calgary assisted-application plan](calgary-assisted-application-plan.md) describes the future portal workflow and separate applicant audit gates; it does not enable external submission.
