@@ -21,3 +21,7 @@ All newly created default checklist tasks now include starting guidance and comp
 A read-only `GET /api/v1/agent/applications` route, requiring `applications`, lists the authenticated workspace's applications and helps agents find the correct existing checklist. Deploy this update before using it. Do not bootstrap another approved proposal merely to discover an existing application.
 
 No schema migration is needed for this display/default-guide update.
+
+Task titles and “View details and links” now open an accessible dialog with the full guide. Completion checkboxes remain separate from opening details.
+
+The Writing Library uses server pagination with 10, 20, 50 or 100 samples per page. Its page and pageSize are retained in the URL. `GET /api/v1/writing-samples?page=1&pageSize=20` returns `meta.count`, `total`, `page`, `pageSize` and `totalPages`; requests without pagination parameters retain the previous collection contract. Results are ordered by updated time and ID for deterministic ties. The paginated frontend and backend should be deployed together; no migration is required.

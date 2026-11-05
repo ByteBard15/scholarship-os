@@ -22,10 +22,11 @@ export const writingKeys = {
   tags: ["writing", "tags"] as const,
 };
 
-export const listWritingSamples = async () =>
-  normalizeCollection(
-    await getJSON<NullableCollection<WritingSample>>("/api/v1/writing-samples"),
-  );
+export type WritingPage = { data: WritingSample[]; meta: { count: number; total: number; page: number; pageSize: number; totalPages: number } };
+export const listWritingSamples = async (page = 1, pageSize = 20): Promise<WritingPage> => {
+  const result = await getJSON<WritingPage>(`/api/v1/writing-samples?page=${page}&pageSize=${pageSize}`);
+  return { ...result, data: result.data ?? [] };
+};
 
 export const createWritingSample = (request: CreateWritingSample) =>
   requestJSON<Envelope<WritingSample>>("/api/v1/writing-samples", {

@@ -1,6 +1,7 @@
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CollapsibleText } from "../components/CollapsibleText";
 import {
   createWritingSample,
@@ -24,10 +25,29 @@ const documentTypes: Array<{ value: WritingDocumentType; label: string }> = [
 
 export function WritingLibraryPage() {
   const client = useQueryClient();
-  const samples = useQuery({
-    queryKey: writingKeys.samples,
-    queryFn: listWritingSamples,
+  const [params, setParams] = useSearchParams();
+  const rawPage = Number(params.get("page") ?? 1);
+  const page = Number.isInteger(rawPage) && rawPage > 0 && rawPage <= 1000000 ? rawPage : 1;
+  const rawSize = Number(params.get("pageSize") ?? 20);
+  const pageSize = [10, 20, 50, 100].includes(rawSize) ? rawSize : 20;
+  const setPage = (next: number) => setParams((previous) => {
+    const updated = new URLSearchParams(previous);
+    updated.set("page", String(next));
+    return updated;
   });
+  const samples = useQuery({
+    queryKey: [...writingKeys.samples, page, pageSize],
+    queryFn: () => listWritingSamples(page, pageSize),
+  });
+  useEffect(() => {
+    if (samples.data && page > Math.max(1, samples.data.meta.totalPages)) {
+      setParams((previous) => {
+        const updated = new URLSearchParams(previous);
+        updated.set("page", String(Math.max(1, samples.data.meta.totalPages)));
+        return updated;
+      }, { replace: true });
+    }
+  }, [samples.data, page, setParams]);
   const tags = useQuery({
     queryKey: writingKeys.tags,
     queryFn: listWritingTags,
@@ -41,6 +61,7 @@ export function WritingLibraryPage() {
   const create = useMutation({
     mutationFn: createWritingSample,
     onSuccess: () => {
+      setPage(1);
       setTitle("");
       setDescription("");
       setTagText("");
@@ -157,7 +178,7 @@ export function WritingLibraryPage() {
       <div className="mt-8 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Available samples</h2>
         <span className="text-sm text-slate-500">
-          {samples.data?.meta.count ?? 0} samples
+          {samples.data?.meta.total ?? 0} samples
         </span>
       </div>
       {samples.isPending && <p className="mt-4">Loading writing samples…</p>}
@@ -214,6 +235,24 @@ export function WritingLibraryPage() {
           </article>
         ))}
       </div>
+      {samples.data && samples.data.meta.total === 0 && <p className="mt-4 text-sm text-slate-600">No writing samples yet.</p>}
+      <nav aria-label="Writing sample pagination" className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
+        <label className="flex items-center gap-2">Samples per page
+          <select className="rounded border px-2 py-1" value={pageSize} onChange={(event) => setParams((previous) => {
+            const updated = new URLSearchParams(previous);
+            updated.set("pageSize", event.target.value);
+            updated.set("page", "1");
+            return updated;
+          })}>
+            {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+          </select>
+        </label>
+        <span>{samples.data ? `${samples.data.meta.total} sample(s) · Page ${page} of ${Math.max(1, samples.data.meta.totalPages)}` : "Loading…"}</span>
+        <div className="flex gap-2">
+          <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={page === 1 || samples.isFetching} onClick={() => setPage(page - 1)}>Previous</button>
+          <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={!samples.data || page >= samples.data.meta.totalPages || samples.isFetching} onClick={() => setPage(page + 1)}>Next</button>
+        </div>
+      </nav>
     </section>
   );
 }

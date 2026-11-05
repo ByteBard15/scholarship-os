@@ -7,6 +7,8 @@ import (
 )
 
 type SampleFilters struct {
+	Limit         int
+	Offset        int
 	DocumentType  *string
 	ApplicationID *uuid.UUID
 	Statuses      []string
@@ -16,6 +18,7 @@ type Repository interface {
 	CreateSample(context.Context, *WritingSample, []WritingTag, []uuid.UUID) error
 	GetSample(context.Context, uuid.UUID) (*WritingSample, error)
 	ListSamples(context.Context, uuid.UUID, SampleFilters) ([]WritingSample, error)
+	CountSamples(context.Context, uuid.UUID, SampleFilters) (int64, error)
 	UpdateSample(context.Context, *WritingSample, *[]WritingTag) error
 	UpdateSuggestedSample(context.Context, *WritingSample, *[]WritingTag) error
 	ListSampleMetadata(context.Context, uuid.UUID, SampleMetadataQuery) ([]SampleMetadataResponse, error)

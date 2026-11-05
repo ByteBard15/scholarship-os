@@ -409,3 +409,17 @@ func sampleResponse(sample *WritingSample, sources []uuid.UUID) SampleResponse {
 	}
 	return SampleResponse{ID: sample.ID, UserID: sample.UserID, ApplicationID: sample.ApplicationID, Title: sample.Title, DocumentType: sample.DocumentType, Content: sample.Content, Origin: sample.Origin, Status: sample.Status, Description: sample.Description, CreatedBy: sample.CreatedBy, Tags: tags, SourceSampleIDs: sources, SourceProfileSnapshotID: sample.SourceProfileSnapshotID, CreatedAt: sample.CreatedAt.UTC(), UpdatedAt: sample.UpdatedAt.UTC()}
 }
+
+func (s *Service) ListSamplePage(ctx context.Context, requestedUserID *uuid.UUID, filters SampleFilters, page, pageSize int) ([]SampleResponse, int64, error) {
+	userID, err := requestUserID(ctx, requestedUserID)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.repo.CountSamples(ctx, userID, filters)
+	if err != nil {
+		return nil, 0, err
+	}
+	filters.Limit, filters.Offset = pageSize, (page-1)*pageSize
+	items, err := s.ListSamples(ctx, requestedUserID, filters)
+	return items, total, err
+}

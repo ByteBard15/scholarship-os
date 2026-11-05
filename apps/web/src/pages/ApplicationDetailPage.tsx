@@ -1,3 +1,4 @@
+import { Dialog } from "../components/Dialog";
 import { TaskGuide } from "../components/TaskGuide";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,6 +37,7 @@ const tabs = [
 export function ApplicationDetailPage() {
   const { id = "" } = useParams();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Overview");
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const app = useApplication(id);
   const runs = useResearch(id);
   const latest = runs.data?.data[0]?.id ?? "";
@@ -74,8 +76,15 @@ export function ApplicationDetailPage() {
   if (app.isError) return <p className="text-red-700">{app.error.message}</p>;
   const d = app.data.data,
     a = d.application;
+  const selectedTask = d.tasks.find((item) => item.id === selectedTaskId);
   return (
     <section>
+      <Dialog open={!!selectedTask} title={selectedTask?.title ?? "Task details"} onClose={() => setSelectedTaskId(null)}>
+        {selectedTask && <div className="p-5">
+          <p className="text-sm text-slate-500">{selectedTask.status.replaceAll("_", " ")} · {selectedTask.taskType ?? "task"}{selectedTask.dueAt ? ` · Due ${new Date(selectedTask.dueAt).toLocaleString()}` : ""}</p>
+          {selectedTask.description ? <TaskGuide description={selectedTask.description} /> : <p className="mt-4 text-sm text-slate-600">No additional instructions have been added to this task yet.</p>}
+        </div>}
+      </Dialog>
       <p className="text-sm uppercase text-indigo-700">
         {a.status.replaceAll("_", " ")}
       </p>
@@ -263,13 +272,9 @@ export function ApplicationDetailPage() {
                   }
                 />
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={
-                      v.status === "done" ? "line-through text-slate-500" : ""
-                    }
-                  >
+                  <button type="button" onClick={() => setSelectedTaskId(v.id)} aria-haspopup="dialog" className={`text-left font-medium underline underline-offset-2 ${v.status === "done" ? "line-through text-slate-500" : "text-indigo-700"}`}>
                     {v.title}
-                  </p>
+                  </button>
                   <p className="text-xs text-slate-500">
                     {v.taskType ?? "task"}
                     {v.dueAt
@@ -277,7 +282,7 @@ export function ApplicationDetailPage() {
                       : ""}
                     {v.parentTaskId ? " · subtask" : ""}
                   </p>
-                  {v.description && <TaskGuide description={v.description} />}
+                  <button type="button" className="mt-2 text-sm text-indigo-700" onClick={() => setSelectedTaskId(v.id)}>View details and links</button>
                 </div>
               </div>
             ))}

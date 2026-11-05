@@ -54,7 +54,16 @@ func (r *GORMRepository) GetSample(ctx context.Context, id uuid.UUID) (*WritingS
 }
 
 func (r *GORMRepository) ListSamples(ctx context.Context, userID uuid.UUID, filters SampleFilters) ([]WritingSample, error) {
-	query := r.db.WithContext(ctx).Preload("Tags").Where("user_id = ?", userID).Order("updated_at DESC")
+	query := r.sampleQuery(ctx, userID, filters).Preload("Tags").Order("updated_at DESC, id DESC")
+	if filters.Limit > 0 {
+		query = query.Limit(filters.Limit).Offset(filters.Offset)
+	}
+	samples := make([]WritingSample, 0)
+	return samples, query.Find(&samples).Error
+}
+
+func (r *GORMRepository) sampleQuery(ctx context.Context, userID uuid.UUID, filters SampleFilters) *gorm.DB {
+	query := r.db.WithContext(ctx).Model(&WritingSample{}).Where("user_id = ?", userID)
 	if filters.DocumentType != nil {
 		query = query.Where("document_type = ?", *filters.DocumentType)
 	}
@@ -64,8 +73,13 @@ func (r *GORMRepository) ListSamples(ctx context.Context, userID uuid.UUID, filt
 	if len(filters.Statuses) > 0 {
 		query = query.Where("status IN ?", filters.Statuses)
 	}
-	samples := make([]WritingSample, 0)
-	return samples, query.Find(&samples).Error
+	return query
+}
+
+func (r *GORMRepository) CountSamples(ctx context.Context, userID uuid.UUID, filters SampleFilters) (int64, error) {
+	var total int64
+	err := r.sampleQuery(ctx, userID, filters).Count(&total).Error
+	return total, err
 }
 
 func (r *GORMRepository) UpdateSample(ctx context.Context, sample *WritingSample, tags *[]WritingTag) error {

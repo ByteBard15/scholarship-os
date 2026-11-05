@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	principal "github.com/byte/scholarship-os/apps/api/pkg/auth"
 	appLogger "github.com/byte/scholarship-os/apps/api/pkg/logger"
@@ -34,6 +35,28 @@ func (h *Handler) ListSamples(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		filters.ApplicationID = &id
+	}
+	if r.URL.Query().Has("page") || r.URL.Query().Has("pageSize") {
+		page, pageSize := 1, 20
+		for name, target := range map[string]*int{"page": &page, "pageSize": &pageSize} {
+			if value := r.URL.Query().Get(name); value != "" {
+				parsed, err := strconv.Atoi(value)
+				if err != nil || parsed < 1 || (name == "pageSize" && parsed > 100) || (name == "page" && parsed > 1000000) {
+					response.Error(w, http.StatusBadRequest, "INVALID_PAGINATION", "page must be between 1 and 1000000 and pageSize between 1 and 100")
+					return
+				}
+				*target = parsed
+			}
+		}
+		items, total, err := h.service.ListSamplePage(r.Context(), queryUserID(r), filters, page, pageSize)
+		if err != nil {
+			h.writeError(w, r, err)
+			return
+		}
+		response.JSON(w, http.StatusOK, map[string]any{"data": items, "meta": map[string]any{
+			"count": len(items), "total": total, "page": page, "pageSize": pageSize, "totalPages": (total + int64(pageSize) - 1) / int64(pageSize),
+		}})
+		return
 	}
 	items, err := h.service.ListSamples(r.Context(), queryUserID(r), filters)
 	if err != nil {
