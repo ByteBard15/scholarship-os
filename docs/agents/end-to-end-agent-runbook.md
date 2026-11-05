@@ -6,6 +6,8 @@ It is an operational sequence, not permission to bypass service boundaries. Agen
 
 For deployment, granting access and the complete route map, see [application preparation access](application-preparation-access.md).
 
+Application checklists must include actionable instructions; see [task guides](task-guides.md).
+
 ## 1. Authentication and scope requirements
 
 Authenticate every agent request using the assigned credential:

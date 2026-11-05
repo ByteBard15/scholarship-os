@@ -535,6 +535,18 @@ func (r *GORMRepository) CreateApplicationFromProposal(ctx context.Context, prop
 			return err
 		}
 		tasks := proposalDefaultTasks(created.ID)
+		if programmeID != nil {
+			var programme catalog.Programme
+			if err = tx.First(&programme, "id = ?", *programmeID).Error; err != nil {
+				return err
+			}
+			if programme.ProgrammeURL != nil {
+				for i := range tasks {
+					text := *tasks[i].Description + "\n\nOfficial programme reference: " + *programme.ProgrammeURL
+					tasks[i].Description = &text
+				}
+			}
+		}
 		if err = tx.Create(&tasks).Error; err != nil {
 			return err
 		}
@@ -675,7 +687,8 @@ func proposalDefaultTasks(applicationID uuid.UUID) []application.ApplicationTask
 	items := make([]application.ApplicationTask, len(definitions))
 	for i, definition := range definitions {
 		order, source, kind := i+1, "proposal", definition.kind
-		items[i] = application.ApplicationTask{ApplicationID: applicationID, Title: definition.title, Status: "todo", SortOrder: &order, Source: &source, TaskType: &kind}
+		description := application.TaskInstructions(definition.title)
+		items[i] = application.ApplicationTask{ApplicationID: applicationID, Title: definition.title, Description: &description, Status: "todo", SortOrder: &order, Source: &source, TaskType: &kind}
 	}
 	return items
 }

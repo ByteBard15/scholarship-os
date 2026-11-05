@@ -49,6 +49,7 @@ The backend flow is handler → service → repository → GORM → PostgreSQL.
 - Prefill agents may write supported factual fields and suggested answers, but subjective answers remain reviewable and unsupported facts become deduplicated `InformationRequest` records.
 - An `InformationRequest` becomes completed only after its response has been transactionally applied to the controlled target. Completed requests are not reopened implicitly.
 - Reusable applicant writing belongs in the writing library with an explicit `documentType` and normalized tags. Agents must list tags before retrieving content, load no more source writing than needed, and preserve `derived_from` provenance when creating a new draft. Profile-backed drafts may use an owned `sourceProfileId` with immutable EffectiveProfile snapshot provenance; recommendation letters still require source writing samples.
+- Application checklist tasks must provide concrete numbered steps, the appropriate official links or named internal resources, a clear completion criterion, and source/deadline notes. Keep confirmed deadlines separate from personal planning targets and preserve the applicant's task progress.
 - Agent-generated writing is always `suggested` until human review. It may rephrase supported source material but must not fabricate applicant facts or recommendation claims.
 
 ## Database Rules

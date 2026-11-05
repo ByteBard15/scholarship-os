@@ -1,3 +1,4 @@
+import { TaskGuide } from "../components/TaskGuide";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -250,16 +251,18 @@ export function ApplicationDetailPage() {
             {d.tasks.map((v) => (
               <div
                 key={v.id}
-                className="flex items-center gap-3 rounded border p-3"
+                className="flex items-start gap-3 rounded border p-4"
               >
                 <input
                   type="checkbox"
+                  aria-label={`Mark ${v.title} ${v.status === "done" ? "incomplete" : "complete"}`}
+                  className="mt-1"
                   checked={v.status === "done"}
                   onChange={() =>
                     task.mutate({ taskId: v.id, done: v.status === "done" })
                   }
                 />
-                <div>
+                <div className="min-w-0 flex-1">
                   <p
                     className={
                       v.status === "done" ? "line-through text-slate-500" : ""
@@ -274,6 +277,7 @@ export function ApplicationDetailPage() {
                       : ""}
                     {v.parentTaskId ? " · subtask" : ""}
                   </p>
+                  {v.description && <TaskGuide description={v.description} />}
                 </div>
               </div>
             ))}

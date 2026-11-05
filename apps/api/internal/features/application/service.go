@@ -70,6 +70,18 @@ func (s *Service) Create(ctx context.Context, q CreateApplicationRequest) (*Appl
 	var tasks []ApplicationTask
 	if createTasks {
 		tasks = defaultTasks()
+		if q.ProgrammeID != nil {
+			programme, err := s.catalog.GetProgramme(ctx, *q.ProgrammeID)
+			if err != nil {
+				return nil, err
+			}
+			if programme.ProgrammeURL != nil {
+				for i := range tasks {
+					text := *tasks[i].Description + "\n\nOfficial programme reference: " + *programme.ProgrammeURL
+					tasks[i].Description = &text
+				}
+			}
+		}
 	}
 	entityType := "application"
 	audit := &profile.AuditLog{UserID: &parent.UserID, Action: "application.created", EntityType: &entityType, Metadata: profile.JSON(`{"application_profile_created":true}`)}
@@ -85,7 +97,8 @@ func defaultTasks() []ApplicationTask {
 		order := i + 1
 		kind := n.kind
 		source := "system"
-		v[i] = ApplicationTask{Title: n.title, Status: "todo", SortOrder: &order, TaskType: &kind, Source: &source}
+		description := TaskInstructions(n.title)
+		v[i] = ApplicationTask{Title: n.title, Description: &description, Status: "todo", SortOrder: &order, TaskType: &kind, Source: &source}
 	}
 	return v
 }

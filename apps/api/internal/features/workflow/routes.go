@@ -113,6 +113,7 @@ func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handle
 	r.With(applicationScope, owners.Application("agent inspect fields")).Get("/agent/applications/{applicationID}/fields", h.ListFields)
 	r.With(applicationScope, owners.Application("agent preparation summary")).Get("/agent/applications/{applicationID}/preparation", h.PreparationSummary)
 	r.With(informationScope).Get("/agent/information-requests", h.ListInformationRequests)
+	r.With(applicationScope).Get("/agent/applications", applications.List)
 	r.With(applicationScope, owners.Application("agent get application")).Get("/agent/applications/{applicationID}", applications.Get)
 	r.With(profileScope, owners.Application("agent get application effective profile")).Get("/agent/applications/{applicationID}/effective-profile", h.AgentGetEffectiveProfile)
 	r.With(applicationScope, owners.Application("agent run application prefill")).Post("/agent/applications/{applicationID}/prefill", h.RunPrefill)
