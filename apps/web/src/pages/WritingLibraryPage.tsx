@@ -1,3 +1,4 @@
+import { WritingEditDialog } from "../components/WritingEditDialog";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -10,7 +11,10 @@ import {
   listWritingTags,
   writingKeys,
 } from "../features/writing/api";
-import type { WritingDocumentType } from "../features/writing/types";
+import type {
+  WritingSample,
+  WritingDocumentType,
+} from "../features/writing/types";
 
 const documentTypes: Array<{ value: WritingDocumentType; label: string }> = [
   { value: "personal_statement", label: "Personal statement" },
@@ -25,27 +29,38 @@ const documentTypes: Array<{ value: WritingDocumentType; label: string }> = [
 
 export function WritingLibraryPage() {
   const client = useQueryClient();
+  const [editing, setEditing] = useState<WritingSample | null>(null);
   const [params, setParams] = useSearchParams();
   const rawPage = Number(params.get("page") ?? 1);
-  const page = Number.isInteger(rawPage) && rawPage > 0 && rawPage <= 1000000 ? rawPage : 1;
+  const page =
+    Number.isInteger(rawPage) && rawPage > 0 && rawPage <= 1000000
+      ? rawPage
+      : 1;
   const rawSize = Number(params.get("pageSize") ?? 20);
   const pageSize = [10, 20, 50, 100].includes(rawSize) ? rawSize : 20;
-  const setPage = (next: number) => setParams((previous) => {
-    const updated = new URLSearchParams(previous);
-    updated.set("page", String(next));
-    return updated;
-  });
+  const setPage = (next: number) =>
+    setParams((previous) => {
+      const updated = new URLSearchParams(previous);
+      updated.set("page", String(next));
+      return updated;
+    });
   const samples = useQuery({
     queryKey: [...writingKeys.samples, page, pageSize],
     queryFn: () => listWritingSamples(page, pageSize),
   });
   useEffect(() => {
     if (samples.data && page > Math.max(1, samples.data.meta.totalPages)) {
-      setParams((previous) => {
-        const updated = new URLSearchParams(previous);
-        updated.set("page", String(Math.max(1, samples.data.meta.totalPages)));
-        return updated;
-      }, { replace: true });
+      setParams(
+        (previous) => {
+          const updated = new URLSearchParams(previous);
+          updated.set(
+            "page",
+            String(Math.max(1, samples.data.meta.totalPages)),
+          );
+          return updated;
+        },
+        { replace: true },
+      );
     }
   }, [samples.data, page, setParams]);
   const tags = useQuery({
@@ -80,6 +95,13 @@ export function WritingLibraryPage() {
 
   return (
     <section>
+      {editing && (
+        <WritingEditDialog
+          key={editing.id}
+          sample={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <h1 className="text-3xl font-semibold">Writing Library</h1>
       <p className="mt-2 max-w-3xl text-sm text-slate-600">
         Add factual source writing for application agents to find by tag. Agent
@@ -196,15 +218,24 @@ export function WritingLibraryPage() {
                   {sample.status}
                 </p>
               </div>
-              <RequestButton
-                pending={remove.isPending}
-                className="text-sm text-red-700"
-                disabled={remove.isPending}
-                onClick={() => remove.mutateAsync(sample.id)}
-                type="button"
-              >
-                Delete
-              </RequestButton>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  className="text-sm font-medium text-indigo-700"
+                  onClick={() => setEditing(sample)}
+                >
+                  Edit
+                </button>
+                <RequestButton
+                  pending={remove.isPending}
+                  className="text-sm text-red-700"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutateAsync(sample.id)}
+                  type="button"
+                >
+                  Delete
+                </RequestButton>
+              </div>
             </div>
             {sample.description && (
               <p className="mt-3 text-sm text-slate-600">
@@ -235,22 +266,60 @@ export function WritingLibraryPage() {
           </article>
         ))}
       </div>
-      {samples.data && samples.data.meta.total === 0 && <p className="mt-4 text-sm text-slate-600">No writing samples yet.</p>}
-      <nav aria-label="Writing sample pagination" className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
-        <label className="flex items-center gap-2">Samples per page
-          <select className="rounded border px-2 py-1" value={pageSize} onChange={(event) => setParams((previous) => {
-            const updated = new URLSearchParams(previous);
-            updated.set("pageSize", event.target.value);
-            updated.set("page", "1");
-            return updated;
-          })}>
-            {[10, 20, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+      {samples.data && samples.data.meta.total === 0 && (
+        <p className="mt-4 text-sm text-slate-600">No writing samples yet.</p>
+      )}
+      <nav
+        aria-label="Writing sample pagination"
+        className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm"
+      >
+        <label className="flex items-center gap-2">
+          Samples per page
+          <select
+            className="rounded border px-2 py-1"
+            value={pageSize}
+            onChange={(event) =>
+              setParams((previous) => {
+                const updated = new URLSearchParams(previous);
+                updated.set("pageSize", event.target.value);
+                updated.set("page", "1");
+                return updated;
+              })
+            }
+          >
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
           </select>
         </label>
-        <span>{samples.data ? `${samples.data.meta.total} sample(s) · Page ${page} of ${Math.max(1, samples.data.meta.totalPages)}` : "Loading…"}</span>
+        <span>
+          {samples.data
+            ? `${samples.data.meta.total} sample(s) · Page ${page} of ${Math.max(1, samples.data.meta.totalPages)}`
+            : "Loading…"}
+        </span>
         <div className="flex gap-2">
-          <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={page === 1 || samples.isFetching} onClick={() => setPage(page - 1)}>Previous</button>
-          <button type="button" className="rounded border px-3 py-2 disabled:opacity-50" disabled={!samples.data || page >= samples.data.meta.totalPages || samples.isFetching} onClick={() => setPage(page + 1)}>Next</button>
+          <button
+            type="button"
+            className="rounded border px-3 py-2 disabled:opacity-50"
+            disabled={page === 1 || samples.isFetching}
+            onClick={() => setPage(page - 1)}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="rounded border px-3 py-2 disabled:opacity-50"
+            disabled={
+              !samples.data ||
+              page >= samples.data.meta.totalPages ||
+              samples.isFetching
+            }
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+          </button>
         </div>
       </nav>
     </section>

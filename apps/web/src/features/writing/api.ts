@@ -8,7 +8,9 @@ type NullableCollection<T> = {
   meta?: { count: number } | null;
 };
 
-function normalizeCollection<T>(collection: NullableCollection<T>): Collection<T> {
+function normalizeCollection<T>(
+  collection: NullableCollection<T>,
+): Collection<T> {
   const data = collection.data ?? [];
   return {
     data,
@@ -22,9 +24,23 @@ export const writingKeys = {
   tags: ["writing", "tags"] as const,
 };
 
-export type WritingPage = { data: WritingSample[]; meta: { count: number; total: number; page: number; pageSize: number; totalPages: number } };
-export const listWritingSamples = async (page = 1, pageSize = 20): Promise<WritingPage> => {
-  const result = await getJSON<WritingPage>(`/api/v1/writing-samples?page=${page}&pageSize=${pageSize}`);
+export type WritingPage = {
+  data: WritingSample[];
+  meta: {
+    count: number;
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+};
+export const listWritingSamples = async (
+  page = 1,
+  pageSize = 20,
+): Promise<WritingPage> => {
+  const result = await getJSON<WritingPage>(
+    `/api/v1/writing-samples?page=${page}&pageSize=${pageSize}`,
+  );
   return { ...result, data: result.data ?? [] };
 };
 
@@ -41,3 +57,12 @@ export const listWritingTags = async () =>
   normalizeCollection(
     await getJSON<NullableCollection<WritingTag>>("/api/v1/writing-tags"),
   );
+
+export const updateWritingSample = (
+  id: string,
+  request: Partial<CreateWritingSample>,
+) =>
+  requestJSON<Envelope<WritingSample>>(`/api/v1/writing-samples/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(request),
+  });

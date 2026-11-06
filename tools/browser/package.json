@@ -1,0 +1,16 @@
+{
+  "name": "@scholarship-os/browser",
+  "version": "0.1.0",
+  "description": "Local, visible Playwright session for applicant-assisted portal inspection",
+  "scripts": {
+    "start": "node start.mjs",
+    "inspect": "node inspect.mjs"
+  },
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@playwright/mcp": "0.0.84"
+  },
+  "private": true
+}
