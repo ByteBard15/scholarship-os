@@ -1,3 +1,4 @@
+import { RequestCheckbox } from "../components/RequestCheckbox";
 import { TaskEvidencePanel } from "../components/TaskEvidencePanel";
 import { Dialog } from "../components/Dialog";
 import { TaskGuide } from "../components/TaskGuide";
@@ -65,7 +66,7 @@ export function ApplicationDetailPage() {
   const task = useMutation({
     mutationFn: ({ taskId, done }: { taskId: string; done: boolean }) =>
       completeTask(id, taskId, !done),
-    onSuccess: () => void refresh(),
+    onSuccess: () => refresh(),
   });
   const prefill = useMutation({
     mutationFn: () => runPrefill(id),
@@ -265,14 +266,10 @@ export function ApplicationDetailPage() {
                 key={v.id}
                 className="flex items-start gap-3 rounded border p-4"
               >
-                <input
-                  type="checkbox"
-                  aria-label={`Mark ${v.title} ${v.status === "done" ? "incomplete" : "complete"}`}
-                  className="mt-1"
+                <RequestCheckbox
+                  label={`Mark ${v.title} ${v.status === "done" ? "incomplete" : "complete"}`}
                   checked={v.status === "done"}
-                  onChange={() =>
-                    task.mutate({ taskId: v.id, done: v.status === "done" })
-                  }
+                  onChange={() => task.mutateAsync({ taskId: v.id, done: v.status === "done" })}
                 />
                 <div className="min-w-0 flex-1">
                   <button type="button" onClick={() => setSelectedTaskId(v.id)} aria-haspopup="dialog" className={`text-left font-medium underline underline-offset-2 ${v.status === "done" ? "line-through text-slate-500" : "text-indigo-700"}`}>
