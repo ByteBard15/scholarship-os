@@ -418,3 +418,5 @@ Fail safely when:
 ```
 
 For task completion criteria and attributed evidence, use [task completion evidence](task-completion-evidence.md). The [Calgary assisted-application plan](calgary-assisted-application-plan.md) describes the future portal workflow and separate applicant audit gates; it does not enable external submission.
+
+For proposal planning risk indices, credential snapshots, supervisor accessibility and time-dependent factors, use [proposal risk assessments](proposal-risk-assessments.md). These indices do not estimate admission probabilities and do not replace eligibility checks or human proposal approval.

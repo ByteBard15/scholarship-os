@@ -379,3 +379,7 @@ func TestPrefillUsesEvidenceAndSkipsCompletedInformationRequest(t *testing.T) {
 		t.Fatalf("answer statuses = %#v", statuses)
 	}
 }
+
+func (f *fakeProfiles) CreateSnapshot(context.Context, uuid.UUID, profile.CreateSnapshotRequest) (*profile.ProfileSnapshot, error) {
+	return &profile.ProfileSnapshot{ID: uuid.New()}, nil
+}

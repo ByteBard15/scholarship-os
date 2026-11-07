@@ -21,6 +21,7 @@ type ApplicationReader interface {
 }
 
 type ProfileReader interface {
+	CreateSnapshot(context.Context, uuid.UUID, profile.CreateSnapshotRequest) (*profile.ProfileSnapshot, error)
 	Get(context.Context, uuid.UUID) (*profile.ApplicantProfile, error)
 	ResolveEffectiveProfile(context.Context, uuid.UUID) (*profile.EffectiveProfileResponse, error)
 }

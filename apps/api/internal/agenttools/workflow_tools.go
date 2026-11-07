@@ -12,6 +12,8 @@ import (
 // prefill agents. It intentionally exposes domain operations rather than a
 // generic entity update or database handle.
 type WorkflowAgentTools interface {
+	ListProposalRisk(context.Context, uuid.UUID) ([]workflow.RiskAssessmentResponse, error)
+	CreateProposalRisk(context.Context, uuid.UUID, workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error)
 	QueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	ListResearchTasks(context.Context, workflow.ResearchTaskFilters, int, int) ([]workflow.ResearchTask, int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
@@ -29,6 +31,8 @@ type WorkflowAgentTools interface {
 }
 
 type workflowService interface {
+	ListProposalRisk(context.Context, uuid.UUID) ([]workflow.RiskAssessmentResponse, error)
+	CreateProposalRisk(context.Context, uuid.UUID, workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error)
 	AgentQueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
 	AgentListResearchTaskPage(context.Context, workflow.ResearchTaskFilters, int, int) ([]workflow.ResearchTask, int64, error)
 	GetResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
@@ -93,4 +97,11 @@ func (t *ControlledWorkflowTools) QueueResearchTask(ctx context.Context, id uuid
 }
 func (t *ControlledWorkflowTools) ListResearchTasks(ctx context.Context, filters workflow.ResearchTaskFilters, page, pageSize int) ([]workflow.ResearchTask, int64, error) {
 	return t.workflows.AgentListResearchTaskPage(ctx, filters, page, pageSize)
+}
+
+func (t *ControlledWorkflowTools) ListProposalRisk(ctx context.Context, id uuid.UUID) ([]workflow.RiskAssessmentResponse, error) {
+	return t.workflows.ListProposalRisk(ctx, id)
+}
+func (t *ControlledWorkflowTools) CreateProposalRisk(ctx context.Context, id uuid.UUID, q workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error) {
+	return t.workflows.CreateProposalRisk(ctx, id, q)
 }

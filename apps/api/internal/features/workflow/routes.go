@@ -37,6 +37,8 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.With(owners.ResearchTask("list research task run sources")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/runs/{runID}/sources", h.ListTaskRunSources)
 	r.With(owners.ResearchTask("list research task run findings")).Get("/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/runs/{runID}/findings", h.ListTaskRunFindings)
 
+	r.With(owners.ApplicationProposal("list proposal risk")).Get("/application-proposals/{proposalID}/risk-assessments", h.ListProposalRisk)
+	r.With(owners.ApplicationProposal("create proposal risk")).Post("/application-proposals/{proposalID}/risk-assessments", h.CreateProposalRisk)
 	r.Get("/application-proposals", h.ListProposals)
 	r.With(owners.ApplicationProposal("get application proposal")).Get("/application-proposals/{proposalID}", h.GetProposal)
 	r.With(owners.ApplicationProposal("approve application proposal")).Post("/application-proposals/{proposalID}/approve", h.ApproveProposal)
@@ -98,6 +100,8 @@ func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handle
 	r.With(research, owners.ResearchTask("agent create research finding")).Post("/agent/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/findings", h.AgentCreateResearchFinding)
 	r.With(research, owners.ResearchTask("agent complete research task")).Post("/agent/research-tasks/{taskID:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/complete", h.CompleteResearchTask)
 	r.With(research).Get("/agent/research-contexts", h.ListResearchContexts)
+	r.With(research, owners.ApplicationProposal("agent list proposal risk")).Get("/agent/application-proposals/{proposalID}/risk-assessments", h.ListProposalRisk)
+	r.With(research, profileScope, owners.ApplicationProposal("agent create proposal risk")).Post("/agent/application-proposals/{proposalID}/risk-assessments", h.CreateProposalRisk)
 	r.With(research).Post("/agent/application-proposals", h.AgentCreateApplicationProposal)
 	r.With(applicationScope).Get("/agent/application-proposals/approved", h.AgentListApprovedProposals)
 	r.With(applicationScope, owners.ApplicationProposal("agent create application from approved proposal")).Post("/agent/application-proposals/{proposalID}/application", h.AgentCreateApplicationFromProposal)

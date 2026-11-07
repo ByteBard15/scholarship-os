@@ -1,3 +1,4 @@
+import { ProposalRiskPanel } from "../components/ProposalRiskPanel";
 import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -461,6 +462,7 @@ export function ResearchDetailPage() {
                     Application workspace.
                   </p>
                 )}
+                <ProposalRiskPanel proposalId={proposal.id} profiles={profiles.data?.data ?? []} defaultProfileId={proposal.parentProfileId ?? parent} />
                 {proposal.applicationId && (
                   <Link
                     className="mt-3 inline-block text-sm text-indigo-700 hover:underline"

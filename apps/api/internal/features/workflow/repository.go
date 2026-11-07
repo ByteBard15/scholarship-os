@@ -37,6 +37,8 @@ type TaskDeadlineFinding struct {
 }
 
 type Repository interface {
+	ListRiskAssessments(context.Context, uuid.UUID) ([]ProposalRiskAssessment, error)
+	CreateRiskAssessment(context.Context, *ProposalRiskAssessment) error
 	ListTaskProposals(context.Context, uuid.UUID) ([]ApplicationProposal, error)
 	ListTaskDeadlineFindings(context.Context, []uuid.UUID) ([]TaskDeadlineFinding, error)
 
