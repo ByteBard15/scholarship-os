@@ -13,6 +13,8 @@ Authenticated workspace owners (and SYSTEM) can use:
 - `GET /api/v1/research-tasks/{taskID}/deletion-preview`
 - `POST /api/v1/research-tasks/{taskID}/cascade-delete` with `{ "confirmationToken": "<token from preview>" }`
 
-Agents have no cascade-delete access. The existing `DELETE /api/v1/research-tasks/{taskID}` retains its earlier soft-delete behavior for compatibility.
+Workspace-associated agents explicitly granted the optional `delete` scope can use the same preview and confirmation flow under `/api/v1/agent/research-tasks/{taskID}/deletion-preview` and `/api/v1/agent/research-tasks/{taskID}/cascade-delete`. The service independently checks scope, workspace binding and ownership. This scope can cascade into linked applications, and must only be used for owner-authorized cleanup. It does not grant deletion of arbitrary profiles, writing, catalogue data or external applications. The `research` and `applications` scopes alone do not grant deletion. The existing `DELETE /api/v1/research-tasks/{taskID}` retains its earlier soft-delete behavior for compatibility.
+
+After deployment, a SYSTEM administrator must grant `delete` using the existing `PATCH /api/v1/admin/agent-credentials/{credentialID}/scopes` endpoint. This replaces the scope set: preserve existing scopes and append `delete`. Never give SYSTEM credentials to an agent; agents cannot grant themselves scopes. `delete` is optional and is not required by preparation capability checks.
 
 No database migration is required; this uses existing foreign keys. Deploy the backend and frontend together. To run the destructive integration test, set `WORKFLOW_TEST_DATABASE_URL` to a disposable localhost PostgreSQL database and run `go test ./internal/features/workflow -run TestResearchCascadeDeletion` from `apps/api`. The test creates and removes an isolated schema.

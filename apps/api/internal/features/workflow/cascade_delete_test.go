@@ -36,6 +36,10 @@ func TestResearchDeletionAuthorization(t *testing.T) {
 		{"owner", &principal.Principal{Type: principal.PrincipalUser, UserID: &owner}, true},
 		{"foreign owner", &principal.Principal{Type: principal.PrincipalUser, UserID: &other}, false},
 		{"agent", &principal.Principal{Type: principal.PrincipalAgent, UserID: &owner}, false},
+		{"preparation scopes without delete", &principal.Principal{Type: principal.PrincipalAgent, UserID: &owner, Scopes: map[string]struct{}{principal.ScopeResearch: {}, principal.ScopeApplications: {}, principal.ScopeTasks: {}}}, false},
+		{"delete agent", &principal.Principal{Type: principal.PrincipalAgent, UserID: &owner, Scopes: map[string]struct{}{principal.ScopeDelete: {}}}, true},
+		{"foreign delete agent", &principal.Principal{Type: principal.PrincipalAgent, UserID: &other, Scopes: map[string]struct{}{principal.ScopeDelete: {}}}, false},
+		{"unbound delete agent", &principal.Principal{Type: principal.PrincipalAgent, Scopes: map[string]struct{}{principal.ScopeDelete: {}}}, false},
 		{"system", &principal.Principal{Type: principal.PrincipalSystem}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

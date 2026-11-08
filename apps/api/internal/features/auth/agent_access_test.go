@@ -74,3 +74,21 @@ func TestAgentCapabilitiesExplainMissingPermissions(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDeleteScopeIsExplicitAndOptional(t *testing.T) {
+	scopes, err := normalizedScopes([]string{"delete", "research", "delete"})
+	if err != nil || len(scopes) != 2 {
+		t.Fatalf("delete scope registration: %v %v", scopes, err)
+	}
+	owner := uuid.New()
+	ctx := principal.WithPrincipal(context.Background(), principal.Principal{Type: principal.PrincipalAgent, UserID: &owner})
+	capabilities, err := AgentCapabilities(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, scope := range capabilities.PreparationScopes {
+		if scope == principal.ScopeDelete {
+			t.Fatal("destructive scope must not be required for preparation")
+		}
+	}
+}

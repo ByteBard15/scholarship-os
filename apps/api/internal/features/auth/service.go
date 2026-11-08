@@ -21,7 +21,7 @@ import (
 var allowedAgentScopes = map[string]struct{}{
 	principal.ScopeResearch: {}, principal.ScopeApplications: {}, principal.ScopeQuestionnaires: {},
 	principal.ScopeInformationRequests: {}, principal.ScopeProfiles: {}, principal.ScopeTasks: {},
-	principal.ScopeWriting: {},
+	principal.ScopeWriting: {}, principal.ScopeDelete: {},
 }
 
 type Service struct {

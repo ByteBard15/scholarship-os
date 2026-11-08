@@ -79,6 +79,10 @@ func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 }
 
 func MountAgentRoutes(r chi.Router, h *Handler, applications *application.Handler, owners *ownership.Middleware) {
+	deleteScope := appmw.RequireAgentScope(principal.ScopeDelete)
+	r.With(deleteScope, owners.ResearchTask("agent preview research deletion")).Get("/agent/research-tasks/{taskID}/deletion-preview", h.PreviewResearchDeletion)
+	r.With(deleteScope, owners.ResearchTask("agent cascade delete research task")).Post("/agent/research-tasks/{taskID}/cascade-delete", h.CascadeDeleteResearch)
+
 	research := appmw.RequireAgentScope(principal.ScopeResearch)
 	applicationScope := appmw.RequireAgentScope(principal.ScopeApplications)
 	profileScope := appmw.RequireAgentScope(principal.ScopeProfiles)

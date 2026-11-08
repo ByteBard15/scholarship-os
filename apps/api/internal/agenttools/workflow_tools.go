@@ -12,6 +12,9 @@ import (
 // prefill agents. It intentionally exposes domain operations rather than a
 // generic entity update or database handle.
 type WorkflowAgentTools interface {
+	PreviewResearchDeletion(context.Context, uuid.UUID) (*workflow.ResearchDeletionPreview, error)
+	CascadeDeleteResearch(context.Context, uuid.UUID, string) error
+
 	ListProposalRisk(context.Context, uuid.UUID) ([]workflow.RiskAssessmentResponse, error)
 	CreateProposalRisk(context.Context, uuid.UUID, workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error)
 	QueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
@@ -31,6 +34,9 @@ type WorkflowAgentTools interface {
 }
 
 type workflowService interface {
+	PreviewResearchDeletion(context.Context, uuid.UUID) (*workflow.ResearchDeletionPreview, error)
+	CascadeDeleteResearch(context.Context, uuid.UUID, string) error
+
 	ListProposalRisk(context.Context, uuid.UUID) ([]workflow.RiskAssessmentResponse, error)
 	CreateProposalRisk(context.Context, uuid.UUID, workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error)
 	AgentQueueResearchTask(context.Context, uuid.UUID) (*workflow.ResearchTask, error)
@@ -104,4 +110,11 @@ func (t *ControlledWorkflowTools) ListProposalRisk(ctx context.Context, id uuid.
 }
 func (t *ControlledWorkflowTools) CreateProposalRisk(ctx context.Context, id uuid.UUID, q workflow.CreateRiskAssessmentRequest) (*workflow.RiskAssessmentResponse, error) {
 	return t.workflows.CreateProposalRisk(ctx, id, q)
+}
+
+func (t *ControlledWorkflowTools) PreviewResearchDeletion(ctx context.Context, id uuid.UUID) (*workflow.ResearchDeletionPreview, error) {
+	return t.workflows.PreviewResearchDeletion(ctx, id)
+}
+func (t *ControlledWorkflowTools) CascadeDeleteResearch(ctx context.Context, id uuid.UUID, token string) error {
+	return t.workflows.CascadeDeleteResearch(ctx, id, token)
 }

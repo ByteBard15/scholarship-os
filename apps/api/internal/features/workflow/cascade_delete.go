@@ -32,7 +32,14 @@ func (s *Service) authorizeResearchDeletion(ctx context.Context, id uuid.UUID) (
 	if err != nil {
 		return nil, err
 	}
-	if actor.Type != principal.PrincipalUser && !actor.IsSystem() {
+	if actor.Type == principal.PrincipalAgent {
+		if actor.UserID == nil {
+			return nil, principal.ErrForbidden
+		}
+		if !actor.HasScope(principal.ScopeDelete) {
+			return nil, principal.ErrAgentScopeRequired
+		}
+	} else if actor.Type != principal.PrincipalUser && !actor.IsSystem() {
 		return nil, principal.ErrForbidden
 	}
 	return s.GetResearchTask(ctx, id)
