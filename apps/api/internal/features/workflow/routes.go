@@ -10,6 +10,8 @@ import (
 
 func MountRoutes(r chi.Router, h *Handler, owners *ownership.Middleware) {
 	r.Get("/research-tasks", h.ListResearchTasks)
+	r.With(owners.ResearchTask("preview research deletion")).Get("/research-tasks/{taskID}/deletion-preview", h.PreviewResearchDeletion)
+	r.With(owners.ResearchTask("cascade delete research task")).Post("/research-tasks/{taskID}/cascade-delete", h.CascadeDeleteResearch)
 	r.Post("/research-tasks", h.CreateResearchTask)
 	r.Get("/research-tasks/export", h.ExportResearchTasks)
 	r.Post("/research-tasks/import", h.ImportResearchTasks)

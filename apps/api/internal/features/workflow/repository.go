@@ -37,6 +37,8 @@ type TaskDeadlineFinding struct {
 }
 
 type Repository interface {
+	PreviewResearchDeletion(context.Context, *ResearchTask) (*ResearchDeletionPreview, error)
+	CascadeDeleteResearch(context.Context, *ResearchTask, string) error
 	ListRiskAssessments(context.Context, uuid.UUID) ([]ProposalRiskAssessment, error)
 	CreateRiskAssessment(context.Context, *ProposalRiskAssessment) error
 	ListTaskProposals(context.Context, uuid.UUID) ([]ApplicationProposal, error)

@@ -241,3 +241,21 @@ export const transitionInformationRequest = (
     `/api/v1/information-requests/${id}/${action}`,
     { method: "POST" },
   );
+
+export type ResearchDeletionPreview = {
+  tasks: Array<{ id: string; name: string }>;
+  proposals: Array<{ id: string; name: string }>;
+  applications: Array<{ id: string; name: string }>;
+  archivedProfiles: Array<{ id: string; name: string }>;
+  blockers: string[];
+  confirmationToken: string;
+};
+export const previewResearchDeletion = (id: string) =>
+  getJSON<Envelope<ResearchDeletionPreview>>(
+    `/api/v1/research-tasks/${id}/deletion-preview`,
+  );
+export const cascadeDeleteResearch = (id: string, confirmationToken: string) =>
+  requestJSON<void>(`/api/v1/research-tasks/${id}/cascade-delete`, {
+    method: "POST",
+    body: JSON.stringify({ confirmationToken }),
+  });

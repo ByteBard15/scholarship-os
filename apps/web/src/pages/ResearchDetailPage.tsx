@@ -1,8 +1,9 @@
+import { DeleteResearchTaskButton } from "../components/DeleteResearchTaskButton";
 import { ProposalRiskPanel } from "../components/ProposalRiskPanel";
 import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { RequestButton } from "../components/RequestButton";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   attachTaskContexts,
   approveProposal,
@@ -33,6 +34,7 @@ import { CollapsibleText } from "../components/CollapsibleText";
 export function ResearchDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id ?? "";
   const task = useResearchTask(id),
@@ -134,7 +136,11 @@ export function ResearchDetailPage() {
         Priority: {item.priority ?? "normal"}
       </p>
       <ScholarshipDeadlines task={item} />
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
+        <DeleteResearchTaskButton
+          id={id}
+          onDeleted={() => navigate(`/research${location.search}`)}
+        />
         <span className="rounded bg-slate-100 px-2 py-1 text-xs uppercase">
           {item.status.replaceAll("_", " ")}
         </span>
@@ -462,7 +468,11 @@ export function ResearchDetailPage() {
                     Application workspace.
                   </p>
                 )}
-                <ProposalRiskPanel proposalId={proposal.id} profiles={profiles.data?.data ?? []} defaultProfileId={proposal.parentProfileId ?? parent} />
+                <ProposalRiskPanel
+                  proposalId={proposal.id}
+                  profiles={profiles.data?.data ?? []}
+                  defaultProfileId={proposal.parentProfileId ?? parent}
+                />
                 {proposal.applicationId && (
                   <Link
                     className="mt-3 inline-block text-sm text-indigo-700 hover:underline"

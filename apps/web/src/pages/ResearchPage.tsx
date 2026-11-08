@@ -1,3 +1,4 @@
+import { DeleteResearchTaskButton } from "../components/DeleteResearchTaskButton";
 import { ScholarshipDeadlines } from "../components/ScholarshipDeadlines";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
@@ -572,6 +573,7 @@ export function ResearchPage() {
               </p>
             </Link>
             <ScholarshipDeadlines task={task} />
+            <DeleteResearchTaskButton id={task.id} />
           </article>
         ))}
       </div>
