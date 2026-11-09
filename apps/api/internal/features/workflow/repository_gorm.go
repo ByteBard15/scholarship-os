@@ -607,12 +607,22 @@ func resolveInstitution(tx *gorm.DB, proposal *ApplicationProposal) (*uuid.UUID,
 	if len(proposal.ProposedInstitution) == 0 {
 		return nil, nil
 	}
-	var data ProposedInstitution
-	if err := json.Unmarshal(proposal.ProposedInstitution, &data); err != nil {
+	raw, err := proposedRecordJSON(proposal.ProposedInstitution)
+	if err != nil {
 		return nil, err
 	}
+	var data ProposedInstitution
+	if err := json.Unmarshal(raw, &data); err != nil {
+		return nil, err
+	}
+	if data.Country == "" && proposal.Country != nil {
+		data.Country = *proposal.Country
+	}
+	if data.Country == "" {
+		return nil, validationError("approved proposal requires an institution country")
+	}
 	var existing catalog.Institution
-	err := tx.Where("LOWER(name) = LOWER(?) AND LOWER(country) = LOWER(?)", data.Name, data.Country).First(&existing).Error
+	err = tx.Where("LOWER(name) = LOWER(?) AND LOWER(country) = LOWER(?)", data.Name, data.Country).First(&existing).Error
 	if err == nil {
 		return &existing.ID, nil
 	}
@@ -633,12 +643,16 @@ func resolveProgramme(tx *gorm.DB, proposal *ApplicationProposal, institutionID 
 	if institutionID == nil || len(proposal.ProposedProgramme) == 0 {
 		return nil, nil
 	}
+	raw, err := proposedRecordJSON(proposal.ProposedProgramme)
+	if err != nil {
+		return nil, err
+	}
 	var data ProposedProgramme
-	if err := json.Unmarshal(proposal.ProposedProgramme, &data); err != nil {
+	if err := json.Unmarshal(raw, &data); err != nil {
 		return nil, err
 	}
 	var existing catalog.Programme
-	err := tx.Where("institution_id = ? AND LOWER(name) = LOWER(?)", *institutionID, data.Name).First(&existing).Error
+	err = tx.Where("institution_id = ? AND LOWER(name) = LOWER(?)", *institutionID, data.Name).First(&existing).Error
 	if err == nil {
 		return &existing.ID, nil
 	}
@@ -659,8 +673,12 @@ func resolveScholarship(tx *gorm.DB, proposal *ApplicationProposal, institutionI
 	if len(proposal.ProposedScholarship) == 0 {
 		return nil, nil
 	}
+	raw, err := proposedRecordJSON(proposal.ProposedScholarship)
+	if err != nil {
+		return nil, err
+	}
 	var data ProposedScholarship
-	if err := json.Unmarshal(proposal.ProposedScholarship, &data); err != nil {
+	if err := json.Unmarshal(raw, &data); err != nil {
 		return nil, err
 	}
 	var existing catalog.Scholarship
@@ -668,7 +686,7 @@ func resolveScholarship(tx *gorm.DB, proposal *ApplicationProposal, institutionI
 	if data.ProviderName != nil {
 		query = query.Where("LOWER(provider_name) = LOWER(?)", *data.ProviderName)
 	}
-	err := query.First(&existing).Error
+	err = query.First(&existing).Error
 	if err == nil {
 		return &existing.ID, nil
 	}

@@ -146,4 +146,48 @@ func TestProposalMaterializationWithResearchDeadlineValues(t *testing.T) {
 	if _, err := repo.CreateApplicationFromProposal(context.Background(), &proposal, &task, &parent); err != ErrInvalidProposalState {
 		t.Fatalf("duplicate materialization allowed: %v", err)
 	}
+	t.Run("legacy string catalogue fields", func(t *testing.T) {
+		country := "Egypt"
+		legacyTask := ResearchTask{UserID: owner.ID, ProfileID: &parent.ID, Title: "Legacy AUC research", TaskType: "scholarship_research", Status: "review_required"}
+		if err := db.Create(&legacyTask).Error; err != nil {
+			t.Fatal(err)
+		}
+		var first *application.Application
+		for i := 0; i < 2; i++ {
+			legacy := ApplicationProposal{UserID: owner.ID, ResearchTaskID: legacyTask.ID, ParentProfileID: &parent.ID, Name: "AUC Computer Science", Country: &country, Status: "approved", Priority: "high", ProposedInstitution: profile.JSON(`"The American University in Cairo"`), ProposedProgramme: profile.JSON(`"MSc Computer Science"`), ProposedScholarship: profile.JSON(`"International Graduate Fellowship"`)}
+			if err := db.Create(&legacy).Error; err != nil {
+				t.Fatal(err)
+			}
+			result, err := repo.CreateApplicationFromProposal(context.Background(), &legacy, &legacyTask, &parent)
+			if err != nil {
+				t.Fatalf("legacy approved proposal failed: %v", err)
+			}
+			if result.InstitutionID == nil || result.ProgrammeID == nil || result.ScholarshipID == nil || legacy.ApplicationID == nil {
+				t.Fatal("missing catalogue or application links")
+			}
+			if i == 0 {
+				first = result
+			} else if *first.InstitutionID != *result.InstitutionID || *first.ProgrammeID != *result.ProgrammeID || *first.ScholarshipID != *result.ScholarshipID {
+				t.Fatal("duplicate catalogue entries created")
+			}
+			var stored ApplicationProposal
+			if err := db.First(&stored, "id = ?", legacy.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if string(stored.ProposedInstitution) != `"The American University in Cairo"` || string(stored.ProposedProgramme) != `"MSc Computer Science"` || string(stored.ProposedScholarship) != `"International Graduate Fellowship"` {
+				t.Fatal("approved proposal rewritten")
+			}
+		}
+		var institution struct {
+			Name    string
+			Country string
+		}
+		if err := db.Table("institutions").Where("id = ?", *first.InstitutionID).First(&institution).Error; err != nil {
+			t.Fatal(err)
+		}
+		if institution.Name != "The American University in Cairo" || institution.Country != "Egypt" {
+			t.Fatal("institution metadata corrupted")
+		}
+	})
+
 }
