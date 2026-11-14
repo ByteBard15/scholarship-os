@@ -7,6 +7,12 @@ export function ProtectedRoute() {
   if (auth.isLoading)
     return <p className="p-8 text-slate-600">Restoring session…</p>;
   if (!auth.isAuthenticated)
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
   return <Outlet />;
 }

@@ -44,6 +44,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [clear]);
 
   useEffect(() => {
+    const syncAuthentication = (event: StorageEvent) => {
+      if (event.key !== authStorage.key) return;
+      if (!event.newValue) {
+        setToken(null);
+        setUser(null);
+        setLoading(false);
+        queryClient.clear();
+        return;
+      }
+      setToken(event.newValue);
+    };
+    window.addEventListener("storage", syncAuthentication);
+    return () => window.removeEventListener("storage", syncAuthentication);
+  }, [queryClient]);
+
+  useEffect(() => {
     if (!token) {
       setLoading(false);
       return;
